@@ -2,13 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IVault.sol";
 
-interface ILiquidityVault {
-    function lockTokens(
-        uint256 _totalAmount
-    ) external;
+interface ILiquidityVault is IVault {
+    function getDEXPairAddress() external view returns (address);
 
-    function withdrawTokens(address[] memory _receivers, uint256[] memory _amounts) external;
+    function getBUSDAmountForInitialLiquidity() external returns (uint256);
 
-	function getDEXPairAddress() external view returns (address);
+    function withdrawMarketMakerShare(address _receiver, uint256 _amount) external;
 }

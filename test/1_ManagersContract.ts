@@ -1,32 +1,13 @@
 import { ethers, waffle } from 'hardhat';
 import chai from 'chai';
 
-import ProxyArtifact from '../artifacts/contracts/Proxy/Proxy.sol/Proxy.json';
-import ManagersArtifact from '../artifacts/contracts/Managers/Managers.sol/Managers.json';
-import SoulsArtifact from '../artifacts/contracts/SoulsToken/Souls.sol/Souls.json';
-import StakingArtifact from '../artifacts/contracts/Staking/Staking.sol/Staking.json';
-import AdvisorVaultArtifact from '../artifacts/contracts/Vaults/AdvisorVault.sol/AdvisorVault.json';
-import AirdropVaultArtifact from '../artifacts/contracts/Vaults/AirdropVault.sol/AirdropVault.json';
-import ExchangesVaultArtifact from '../artifacts/contracts/Vaults/ExchangesVault.sol/ExchangesVault.json';
-import LiquidityVaultArtifact from '../artifacts/contracts/Vaults/LiquidityVault.sol/LiquidityVault.json';
-import MarketingVaultArtifact from '../artifacts/contracts/Vaults/MarketingVault.sol/MarketingVault.json';
-import PlayToEarnVaultArtifact from '../artifacts/contracts/Vaults/PlayToEarnVault.sol/PlayToEarnVault.json';
-import TeamVaultArtifact from '../artifacts/contracts/Vaults/TeamVault.sol/TeamVault.json';
-import TreasuryVaultArtifact from '../artifacts/contracts/Vaults/TreasuryVault.sol/TreasuryVault.json';
+import ProxyArtifact from '../artifacts/contracts/Proxy.sol/Proxy.json';
+import ManagersArtifact from '../artifacts/contracts/Managers.sol/Managers.json';
 
 
 import { Proxy } from '../typechain/Proxy';
 import { Managers } from '../typechain/Managers';
-import { Souls } from '../typechain/Souls';
-import { Staking } from '../typechain/Staking';
-import { AdvisorVault } from '../typechain/AdvisorVault';
-import { AirdropVault } from '../typechain/AirdropVault';
-import { ExchangesVault } from '../typechain/ExchangesVault';
-import { LiquidityVault } from '../typechain/LiquidityVault';
-import { MarketingVault } from '../typechain/MarketingVault';
-import { PlayToEarnVault } from '../typechain/PlayToEarnVault';
-import { TeamVault } from '../typechain/TeamVault';
-import { TreasuryVault } from '../typechain/TreasuryVault';
+
 
 
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -37,6 +18,7 @@ var crypto = require('crypto');
 
 
 describe('Managers Contract', () => {
+	return
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;
 	let manager2: SignerWithAddress;
@@ -56,27 +38,25 @@ describe('Managers Contract', () => {
 		managers = new ethers.Contract(await proxy.managers(), ManagersArtifact.abi) as Managers
 
 	});
-
-	describe('addAddressToTrustedSources function', () => {
+	describe('\n\n#########################################\naddAddressToTrustedSources function\n#########################################', () => {
 		it("Only proxy can add an address to trusted sources", async () => {
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
-
 			var wallet = new ethers.Wallet(privateKey);
 
-			const tx = managers.connect(owner).addAddressToTrustedSources(wallet.address)
-			await expect(tx).to.be.revertedWith('Ownable: caller is not the owner');
 
 			const managersOwnerAddress = await managers.connect(owner).owner()
 			expect(managersOwnerAddress).to.be.equal(proxy.address);
+			const tx = managers.connect(owner).addAddressToTrustedSources(wallet.address, "Manager Contract Test")
+			await expect(tx).to.be.revertedWith('Ownable: caller is not the owner');
 
-			await proxy.testAddTrustedSources(wallet.address);
-			const isAddressTrusted = await managers.connect(owner).trustedSources(wallet.address);
-			expect(isAddressTrusted).to.be.equal(true);
+			await proxy.addToTrustedSources(wallet.address, "Test");
+			const trustedAddress = await (await managers.connect(owner).trustedSources(wallet.address)).sourceAddress;
+			expect(trustedAddress).to.be.not.equal(ethers.constants.AddressZero);
 		});
 	});
 
-	describe('isManager function', () => {
+	describe('\n\n#########################################\nisManager function\n#########################################', () => {
 		it("returns true only for manager addresses", async () => {
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
@@ -94,11 +74,9 @@ describe('Managers Contract', () => {
 		});
 	});
 
-	describe('approveTopic function', () => {
+	describe('\n\n#########################################\napproveTopic function\n#########################################', () => {
 		it("only trusted sources can approve a topic and tx.origin must be a manager", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
+			//Create random address
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
@@ -115,41 +93,35 @@ describe('Managers Contract', () => {
 			tx = proxy.connect(owner).testApproveTopicFunction(wallet.address);
 			await expect(tx).to.be.revertedWith("Not authorized")
 
+
 			//Test to call function by a manager over a trusted contract 
 			await proxy.connect(manager1).testApproveTopicFunction(wallet.address);
-			const managerApproval = await managers.connect(owner).managerApprovalsForTopic("Test Approve Topic Function", manager1.address)
+			const managerApproval = await managers.connect(owner).managerApprovalsForTopic("Proxy: Test Approve Topic Function", manager1.address)
 			expect(managerApproval.approved).to.be.equal(true);
 
 			const addedTopic = await managers.connect(owner).activeTopics(0)
-			expect(addedTopic.title).to.be.equal("Test Approve Topic Function");
+			expect(addedTopic.title).to.be.equal("Proxy: Test Approve Topic Function");
 			expect(addedTopic.approveCount).to.be.equal(1);
 
 
 		});
 
 		it("adds topic to list when approved by a manager", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet1 = new ethers.Wallet(privateKey);
 
-			;
-
+		
 			await proxy.connect(manager1).testApproveTopicFunction(wallet1.address);
 			const addedTopics = await managers.connect(owner).getActiveTopics()
 			expect(addedTopics.length).to.be.equal(1);
 			const addedTopic = await managers.connect(owner).activeTopics(0)
-			expect(addedTopic.title).to.be.equal("Test Approve Topic Function");
+			expect(addedTopic.title).to.be.equal("Proxy: Test Approve Topic Function");
 			expect(await proxy.approveTopicTestVariable()).to.be.equal(false);
 		});
 
 
 		it("approves topic if approved by 3 of managers", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const id2 = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
@@ -182,9 +154,6 @@ describe('Managers Contract', () => {
 		});
 
 		it("removes topic from list when approved by 3 of managers", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
@@ -209,11 +178,8 @@ describe('Managers Contract', () => {
 		});
 	});
 
-	describe('cancelTopicApproval function', () => {
+	describe('\n\n#########################################\ncancelTopicApproval function\n#########################################', () => {
 		it("reverts if title not exists", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
@@ -223,52 +189,46 @@ describe('Managers Contract', () => {
 
 		});
 		it("reverts if manager didn't voted title", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
 
 			//Vote using manager1
 			await proxy.connect(manager1).testApproveTopicFunction(wallet.address);
-			const managerApproval = await managers.connect(owner).managerApprovalsForTopic("Test Approve Topic Function", manager1.address)
+			const managerApproval = await managers.connect(owner).managerApprovalsForTopic("Proxy: Test Approve Topic Function", manager1.address)
 			expect(managerApproval.approved).to.be.equal(true);;
 
 			//Try to cancel vote using manager2
-			let tx = managers.connect(manager2).cancelTopicApproval("Test Approve Topic Function");
+			let tx = managers.connect(manager2).cancelTopicApproval("Proxy: Test Approve Topic Function");
 			await expect(tx).to.be.revertedWith("Not voted")
 		});
 
 		it("cancels manager's vote if voted (also tests _deleteTopic internal function)", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
 
 			//Approve with manager1
 			await proxy.connect(manager1).testApproveTopicFunction(wallet.address);
-			const managerApproval = await managers.connect(owner).managerApprovalsForTopic("Test Approve Topic Function", manager1.address)
+			const managerApproval = await managers.connect(owner).managerApprovalsForTopic("Proxy: Test Approve Topic Function", manager1.address)
 			expect(managerApproval.approved).to.be.equal(true);
 
-			let approveInfo = await managers.connect(owner).managerApprovalsForTopic("Test Approve Topic Function", manager1.address);
+			let approveInfo = await managers.connect(owner).managerApprovalsForTopic("Proxy: Test Approve Topic Function", manager1.address);
 			expect(approveInfo.approved).to.be.equal(true);
 
 			//Cancel approval
-			await managers.connect(manager1).cancelTopicApproval("Test Approve Topic Function");
+			await managers.connect(manager1).cancelTopicApproval("Proxy: Test Approve Topic Function");
 
-			approveInfo = await managers.connect(owner).managerApprovalsForTopic("Test Approve Topic Function", manager1.address);
+			approveInfo = await managers.connect(owner).managerApprovalsForTopic("Proxy: Test Approve Topic Function", manager1.address);
 			expect(approveInfo.approved).to.be.equal(false);
+
+			const activeTopics = await managers.connect(owner).getActiveTopics();
+			expect(activeTopics.length).to.be.equal(0)
 
 		});
 
 
 		it("removes from topic list if all the managers canceled their votes", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
@@ -280,17 +240,17 @@ describe('Managers Contract', () => {
 			await proxy.connect(manager2).testApproveTopicFunction(wallet.address);
 
 
-			let approveInfo = await managers.connect(owner).managerApprovalsForTopic("Test Approve Topic Function", manager1.address);
+			let approveInfo = await managers.connect(owner).managerApprovalsForTopic("Proxy: Test Approve Topic Function", manager1.address);
 			expect(approveInfo.approved).to.be.equal(true);
 			let activeTopics = await managers.connect(owner).getActiveTopics()
 
 			expect(activeTopics.length).to.be.equal(1);
 			//Cancel approval
-			await managers.connect(manager1).cancelTopicApproval("Test Approve Topic Function");
+			await managers.connect(manager1).cancelTopicApproval("Proxy: Test Approve Topic Function");
 			activeTopics = await managers.connect(owner).getActiveTopics()
 			expect(activeTopics.length).to.be.equal(1);
 
-			await managers.connect(manager2).cancelTopicApproval("Test Approve Topic Function");
+			await managers.connect(manager2).cancelTopicApproval("Proxy: Test Approve Topic Function");
 			activeTopics = await managers.connect(owner).getActiveTopics()
 
 			expect(activeTopics.length).to.be.equal(0);
@@ -300,11 +260,8 @@ describe('Managers Contract', () => {
 
 	});
 
-	describe('changeManagerAddress function', () => {
+	describe('\n\n#########################################\nchangeManagerAddress function\n#########################################', () => {
 		it("reverts if try to change own address", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);
@@ -314,9 +271,6 @@ describe('Managers Contract', () => {
 
 		});
 		it("changes if approved same address by 3 other managers", async () => {
-			//Add proxy contract to trusted sources
-			await proxy.testAddTrustedSources(proxy.address);
-
 			const id = crypto.randomBytes(32).toString('hex');
 			const privateKey = "0x" + id;
 			var wallet = new ethers.Wallet(privateKey);

@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
 				version: "0.5.0",
 			},
 			{
-				version: "0.8.10",
+				version: "0.8.12",
 				settings: {},
 			},
 		],
@@ -39,13 +39,57 @@ const config: HardhatUserConfig = {
 		}
 	},
 	networks: {
-		rinkeby: {
-			url: process.env.RENKEBY_URL || '',
-			accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+		hardhat: {
+			//   mining: {
+			//     auto: true,
+			//     interval: 1000,
+			//   },
+			// gasPrice: 0,
+			// initialBaseFeePerGas: 0,
+			accounts: {
+				count: 20,
+				mnemonic: process.env.MNEMONIC,
+				path: "m/44'/60'/0'/0",
+			},
+			forking: {
+				url: "https://speedy-nodes-nyc.moralis.io/71ece097b9de0b700fb55cfc/bsc/testnet",
+			},
+			gasPrice:5000000000
 		},
-	},
-	etherscan: {
-		apiKey: process.env.ETHERSCAN_API_KEY,
+
+		rinkeby: {
+			allowUnlimitedContractSize: true,
+			url: process.env.RINKEBY_URL || '',
+			// accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+			accounts: {
+				count: 20,
+				mnemonic: process.env.MNEMONIC,
+				path: "m/44'/60'/0'/0",
+			}, 
+			gasPrice: 5000000000
+		},
+		bsctestnet: {
+			allowUnlimitedContractSize: true,
+			url: process.env.BSC_TESTNET_URL || '',
+			// accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+			accounts: {
+				count: 20,
+				mnemonic: process.env.MNEMONIC,
+				path: "m/44'/60'/0'/0",
+			},
+			gasPrice:5000000000
+		},
+		bscmainnet: {
+			allowUnlimitedContractSize: true,
+			url: process.env.BSC_MAINNET_URL || '',
+			// accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+			accounts: {
+				count: 20,
+				mnemonic: process.env.MNEMONIC,
+				path: "m/44'/60'/0'/0",
+			},
+			gasPrice: 5000000000
+		},
 	},
 };
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.10;
+pragma solidity 0.8.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
@@ -27,7 +27,12 @@ contract Managers is Ownable {
     address public manager5;
 
     mapping(string => mapping(address => TopicApproval)) public managerApprovalsForTopic;
-    mapping(address => bool) public trustedSources;
+
+    struct Source {
+        address sourceAddress;
+        string sourceName;
+    }
+    mapping(address => Source) public trustedSources;
 
     constructor(
         address _manager1,
@@ -49,30 +54,10 @@ contract Managers is Ownable {
         manager3 = _manager3;
         manager4 = _manager4;
         manager5 = _manager5;
-    }
+        _addAddressToTrustedSources(address(this), "Managers");
+        _addAddressToTrustedSources(msg.sender, "Proxy");
 
-    // function setManagers(
-    //     address _manager1,
-    //     address _manager2,
-    //     address _manager3,
-    //     address _manager4,
-    //     address _manager5
-    // ) external onlyOwner {
-    //     require(manager1 == address(0), "Not allowed after initialization");
-    //     require(
-    //         _manager1 != address(0) &&
-    //             _manager2 != address(0) &&
-    //             _manager3 != address(0) &&
-    //             _manager4 != address(0) &&
-    //             _manager5 != address(0),
-    //         "Invalid address in managers"
-    //     );
-    //     manager1 = _manager1;
-    //     manager2 = _manager2;
-    //     manager3 = _manager3;
-    //     manager4 = _manager4;
-    //     manager5 = _manager5;
-    // }
+    }
 
     modifier onlyManagers(address _caller) {
         require(isManager(_caller), "Not authorized");
@@ -80,7 +65,7 @@ contract Managers is Ownable {
     }
 
     modifier onlyTrustedSources(address _sender) {
-        require(trustedSources[_sender], "MANAGERS: Untrusted source");
+        require(trustedSources[_sender].sourceAddress != address(0), "MANAGERS: Untrusted source");
         _;
     }
 
@@ -89,8 +74,13 @@ contract Managers is Ownable {
     /// adds extra security to block function calls from untrusted senders.
     /// @param _address is the address of the smart contract which can interact with this contract.
 
-    function addAddressToTrustedSources(address _address) external onlyOwner {
-        trustedSources[_address] = true;
+    function addAddressToTrustedSources(address _address, string memory _name) external onlyOwner {
+        _addAddressToTrustedSources(_address, _name);
+    }
+
+    function _addAddressToTrustedSources(address _address, string memory _name) internal {
+        trustedSources[_address].sourceAddress = _address;
+        trustedSources[_address].sourceName = _name;
     }
 
     function isManager(address _address) public view returns (bool) {
@@ -114,23 +104,14 @@ contract Managers is Ownable {
         onlyManagers(tx.origin)
         onlyTrustedSources(msg.sender)
     {
-        require(managerApprovalsForTopic[_title][tx.origin].approved == false, "Already voted");
-        managerApprovalsForTopic[_title][tx.origin].approved = true;
-
-        managerApprovalsForTopic[_title][tx.origin].value = _valueInBytes;
-
-        (bool _titleExists, uint256 _topicIndex) = indexOfTopic(_title);
-
-        if (!_titleExists) {
-            activeTopics.push(Topic({title: _title, approveCount: 1}));
-        } else {
-            activeTopics[_topicIndex].approveCount++;
-        }
+        _approveTopic(_title, _valueInBytes);
     }
 
-    //internal version of approveTopic function to be called by only manager addres changer functions
     function _approveTopic(string memory _title, bytes32 _valueInBytes) internal {
         require(managerApprovalsForTopic[_title][tx.origin].approved == false, "Already voted");
+
+        string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+        _title = string.concat(_prefix, _title);
         managerApprovalsForTopic[_title][tx.origin].approved = true;
 
         managerApprovalsForTopic[_title][tx.origin].value = _valueInBytes;
@@ -162,6 +143,8 @@ contract Managers is Ownable {
     }
 
     function deleteTopic(string memory _title) external onlyManagers(tx.origin) onlyTrustedSources(msg.sender) {
+        string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+        _title = string.concat(_prefix, _title);
         _deleteTopic(_title);
     }
 
@@ -198,6 +181,8 @@ contract Managers is Ownable {
     /// @return  _isApproved true if the title approved by 3 of managers with same parameters
 
     function isApproved(string memory _title, bytes32 _value) public view returns (bool _isApproved) {
+        string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+        _title = string.concat(_prefix, _title);
         uint256 _totalValidVotes = 0;
         _totalValidVotes += managerApprovalsForTopic[_title][manager1].approved &&
             managerApprovalsForTopic[_title][manager1].value == _value
@@ -231,6 +216,8 @@ contract Managers is Ownable {
 
         if (isApproved(_title, _valueInBytes)) {
             manager1 = _newAddress;
+            string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+            _title = string.concat(_prefix, _title);
             _deleteTopic(_title);
         }
     }
@@ -244,6 +231,8 @@ contract Managers is Ownable {
 
         if (isApproved(_title, _valueInBytes)) {
             manager2 = _newAddress;
+           string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+            _title = string.concat(_prefix, _title);
             _deleteTopic(_title);
         }
     }
@@ -257,7 +246,9 @@ contract Managers is Ownable {
 
         if (isApproved(_title, _valueInBytes)) {
             manager3 = _newAddress;
-            _deleteTopic(_title);
+         string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+            _title = string.concat(_prefix, _title);
+              _deleteTopic(_title);
         }
     }
 
@@ -270,7 +261,9 @@ contract Managers is Ownable {
 
         if (isApproved(_title, _valueInBytes)) {
             manager4 = _newAddress;
-            _deleteTopic(_title);
+          string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+            _title = string.concat(_prefix, _title);
+             _deleteTopic(_title);
         }
     }
 
@@ -283,7 +276,9 @@ contract Managers is Ownable {
 
         if (isApproved(_title, _valueInBytes)) {
             manager5 = _newAddress;
-            _deleteTopic(_title);
+         string memory _prefix = string.concat(trustedSources[msg.sender].sourceName, ": ");
+            _title = string.concat(_prefix, _title);
+              _deleteTopic(_title);
         }
     }
 }
