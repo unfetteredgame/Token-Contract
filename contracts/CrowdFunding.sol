@@ -23,10 +23,10 @@ contract CrowdFunding is Pausable, Ownable {
         uint256 totalAmount;
         uint256 vestingCount;
         uint256 currentVestingIndex;
+        uint256 blacklistDate;
     }
 
     mapping(address => TokenReward[]) public tokenRewards;
-    mapping(address => bool) public blacklist;
     mapping(address => Investor) public investors;
 
     address[] public investorList;
@@ -61,8 +61,8 @@ contract CrowdFunding is Pausable, Ownable {
         managers = IManagers(_managersAddress);
     }
 
-    modifier ifNotBlacklisted() {
-        require(blacklist[msg.sender] != true, "Address is blacklisted");
+    modifier ifNotBlacklisted(uint256 _time) {
+        require(isInBlacklist(msg.sender, _time) == false, "Address is blacklisted");
         _;
     }
 
@@ -78,7 +78,8 @@ contract CrowdFunding is Pausable, Ownable {
         uint256[] memory _advancePayments,
         uint256[] memory _amountsPerVesting,
         uint8[] memory _numberOfVestings,
-        uint256 _releaseDate
+        uint256 _releaseDate,
+        address _tokenHolder
     ) public onlyOwner whenNotPaused {
         uint256 oneMonthToSeconds = 30 days;
         require(
@@ -117,19 +118,27 @@ contract CrowdFunding is Pausable, Ownable {
             investors[_rewardOwner] = Investor({
                 totalAmount: _investorTotalAmount,
                 vestingCount: _numberOfVesting + 1, //+1 for advancepayment
-                currentVestingIndex: 0
+                currentVestingIndex: 0,
+				blacklistDate:0
             });
             investorList.push(_rewardOwner);
         }
         totalRewardAmount += _totalAmount;
-        require(soulsToken.balanceOf(address(this)) >= totalRewardAmount, "Not enough free token balance in contract");
+
+        require(soulsToken.transferFrom(_tokenHolder, address(this), _totalAmount));
+        // require(soulsToken.balanceOf(address(this)) >= totalRewardAmount, "Not enough free token balance in contract");
     }
 
+    //TODO: change with supportsinterface
     function isCrowdFunding() public pure returns (bool) {
         return true;
     }
 
-    function claimRewards(uint8 _vestingIndex) public whenNotPaused ifNotBlacklisted {
+    function claimRewards(uint8 _vestingIndex)
+        public
+        whenNotPaused
+        ifNotBlacklisted(tokenRewards[msg.sender][_vestingIndex].releaseDate)
+    {
         require(
             tokenRewards[msg.sender][_vestingIndex].releaseDate > 0 &&
                 tokenRewards[msg.sender][_vestingIndex].releaseDate < block.timestamp,
@@ -144,25 +153,29 @@ contract CrowdFunding is Pausable, Ownable {
     }
 
     //Managers Function
-    function withdrawTokens(address _to, uint256 _amount) external onlyManager {
-        require(_to != address(0), "Zero address");
-        require(_amount > 0, "Zero amount");
+    // function withdrawTokens(address _to, uint256 _amount) external onlyManager {
+    //     require(_to != address(0), "Zero address");
+    //     require(_amount > 0, "Zero amount");
 
-        string memory _title = "Withdraw Tokens";
-        bytes32 _valueInBytes = keccak256(abi.encodePacked(_to, _amount));
-        managers.approveTopic(_title, _valueInBytes);
-        if (managers.isApproved(_title, _valueInBytes)) {
-            soulsToken.transfer(_to, _amount);
-            managers.deleteTopic(_title);
-        }
-        require(
-            soulsToken.balanceOf(address(this)) - _amount >= totalRewardAmount,
-            "Amount more then free token balance"
-        );
-    }
+    //     string memory _title = "Withdraw Tokens";
+    //     bytes32 _valueInBytes = keccak256(abi.encodePacked(_to, _amount));
+    //     managers.approveTopic(_title, _valueInBytes);
+    //     if (managers.isApproved(_title, _valueInBytes)) {
+    //         soulsToken.transfer(_to, _amount);
+    //         managers.deleteTopic(_title);
+    //     }
+    //     require(
+    //         soulsToken.balanceOf(address(this)) - _amount >= totalRewardAmount,
+    //         "Amount more then free token balance"
+    //     );
+    // }
 
     //Managers Function
-    function deactivateInvestorVesting(address _rewardOwner, uint8 _vestingIndex) external onlyManager {
+    function deactivateInvestorVesting(
+        address _rewardOwner,
+        uint8 _vestingIndex,
+        address _tokenReceiver
+    ) external onlyManager {
         require(_rewardOwner != address(0), "Zero address");
         require(tokenRewards[_rewardOwner].length > 0, "Reward owner not found");
         require(_vestingIndex < investors[_rewardOwner].vestingCount, "Invalid vesting index");
@@ -175,12 +188,13 @@ contract CrowdFunding is Pausable, Ownable {
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
             tokenRewards[_rewardOwner][_vestingIndex].isActive = false;
+            soulsToken.transfer(_tokenReceiver, tokenRewards[_rewardOwner][_vestingIndex].amount);
             managers.deleteTopic(_title);
         }
     }
 
     //Managers Function
-    function activateInvestorVesting(address _rewardOwner, uint8 _vestingIndex) external onlyManager {
+    function activateInvestorVesting(address _rewardOwner, uint8 _vestingIndex, address _tokenSource) external onlyManager {
         require(_rewardOwner != address(0), "Zero address");
         require(tokenRewards[_rewardOwner].length > 0, "Reward owner not found");
         require(_vestingIndex < investors[_rewardOwner].vestingCount, "Invalid vesting index");
@@ -192,36 +206,51 @@ contract CrowdFunding is Pausable, Ownable {
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
             tokenRewards[_rewardOwner][_vestingIndex].isActive = true;
+			soulsToken.transferFrom(_tokenSource, address(this), tokenRewards[_rewardOwner][_vestingIndex].amount);
             managers.deleteTopic(_title);
         }
     }
 
     //Managers Function
-    function addToBlacklist(address _rewardOwner) external onlyManager {
+    function addToBlacklist(address _rewardOwner, address _tokenReceiver) external onlyManager {
         require(_rewardOwner != address(0), "Zero address");
         require(tokenRewards[_rewardOwner].length > 0, "Reward owner not found");
-        require(isInBlacklist(_rewardOwner) == false, "Already blacklisted");
+        require(isInBlacklist(_rewardOwner, block.timestamp) == false, "Already blacklisted");
 
         string memory _title = "Add To Blacklist";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_rewardOwner));
 
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
-            blacklist[_rewardOwner] = true;
+            uint256 _remainingAmount;
+            for (uint256 i = 0; i < tokenRewards[_rewardOwner].length; i++) {
+                if (tokenRewards[_rewardOwner][i].releaseDate > block.timestamp) {
+                    _remainingAmount += tokenRewards[_rewardOwner][i].amount;
+                }
+            }
+            soulsToken.transfer(_tokenReceiver, _remainingAmount);
+            investors[_rewardOwner].blacklistDate = block.timestamp;
             managers.deleteTopic(_title);
         }
     }
 
     //Managers Function
-    function removeFromBlacklist(address _rewardOwner) external onlyManager {
+    function removeFromBlacklist(address _rewardOwner, address _tokenSource) external onlyManager {
         require(_rewardOwner != address(0), "Zero address");
-        require(isInBlacklist(_rewardOwner) == true, "Not blacklisted");
+        require(isInBlacklist(_rewardOwner, block.timestamp) == true, "Not blacklisted");
 
         string memory _title = "Remove From Blacklist";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_rewardOwner));
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
-            blacklist[_rewardOwner] = false;
+            uint256 _requiredAmount;
+            for (uint256 i = 0; i < tokenRewards[_rewardOwner].length; i++) {
+                if (tokenRewards[_rewardOwner][i].releaseDate > investors[_rewardOwner].blacklistDate) {
+                    _requiredAmount += tokenRewards[_rewardOwner][i].amount;
+                }
+            }
+            soulsToken.transferFrom(_tokenSource, address(this), _requiredAmount);
+            investors[_rewardOwner].blacklistDate = 0;
             managers.deleteTopic(_title);
         }
     }
@@ -230,12 +259,16 @@ contract CrowdFunding is Pausable, Ownable {
         return tokenRewards[msg.sender][_vestingIndex];
     }
 
-    function fetchInvestorList() public view returns (address[] memory) {
-        return investorList;
+    function fetchRewardsInfoForAccount(address _rewardOwner, uint8 _vestingIndex)
+        public
+        view
+        returns (TokenReward memory)
+    {
+        return tokenRewards[_rewardOwner][_vestingIndex];
     }
 
-    function isInBlacklist(address _address) public view returns (bool) {
-        return blacklist[_address];
+    function isInBlacklist(address _address, uint256 _time) public view returns (bool) {
+        return investors[_address].blacklistDate != 0 && investors[_address].blacklistDate < _time;
     }
 
     function getTotalBalance() public view returns (uint256) {

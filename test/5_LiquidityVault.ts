@@ -46,6 +46,7 @@ const _dexRouterAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
 let _BUSDTokenAddress = ""
 
 describe('LiquidityVault Contract', () => {
+	return
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;
 	let manager2: SignerWithAddress;

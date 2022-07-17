@@ -118,7 +118,7 @@ contract SoulsToken is ERC20Burnable, Ownable {
     function _afterTokenTransfer(
         address from,
         address to,
-        uint256 amount
+        uint256
     ) internal override {
         // if (from != address(0) && (from == dexPairAddress || to == dexPairAddress)) {
         if (dexPairAddress != address(0) && block.timestamp < tradingStartTimeOnDEX + botProtectionDuration) {

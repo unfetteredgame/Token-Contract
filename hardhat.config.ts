@@ -52,9 +52,10 @@ const config: HardhatUserConfig = {
 				path: "m/44'/60'/0'/0",
 			},
 			forking: {
-				url: "https://speedy-nodes-nyc.moralis.io/71ece097b9de0b700fb55cfc/bsc/testnet",
+				url: "https://data-seed-prebsc-1-s1.binance.org:8545",
 			},
-			gasPrice:5000000000
+			gasPrice:5000000000,
+			allowUnlimitedContractSize:true
 		},
 
 		rinkeby: {

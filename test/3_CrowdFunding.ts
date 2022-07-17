@@ -31,7 +31,6 @@ const simulateTimeInSeconds = async (duration: number) => {
 
 
 describe('CrowdFunding Contract', () => {
-	return
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;
 	let manager2: SignerWithAddress;
@@ -61,33 +60,37 @@ describe('CrowdFunding Contract', () => {
 		crowdFunding = (await deployContract(owner, CrowdFundingArtifact, ["Seed Sale", souls.address, managers.address])) as CrowdFunding;
 		await proxy.connect(owner).addToTrustedSources(crowdFunding.address, "Seed Sale Funding");
 
+		await proxy.connect(manager1).approveTokensForCrowdFundingContract(crowdFunding.address)
+		await proxy.connect(manager2).approveTokensForCrowdFundingContract(crowdFunding.address)
+		await proxy.connect(manager3).approveTokensForCrowdFundingContract(crowdFunding.address)
+
 		console.log("")
 
 
 	});
-
 	describe('\n\n#########################################\n addRewards function\n#########################################', () => {
 		it("Calculate totalAmount variable correct in contract", async () => {
 			console.log("crowdfunding balance", await (await souls.connect(owner).balanceOf(crowdFunding.address)).toString())
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
 			expect(await souls.connect(owner).balanceOf(crowdFunding.address)).to.be.equal(ethers.utils.parseEther(calculatedTotalAmount.toString()));
 			expect(await crowdFunding.totalRewardAmount()).to.be.equal(ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			console.log("crowdfunding balance", await (await souls.connect(owner).balanceOf(crowdFunding.address)).toString())
 			await crowdFunding.connect(owner).addRewards(
@@ -95,7 +98,8 @@ describe('CrowdFunding Contract', () => {
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			calculatedTotalAmount += 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
 			expect(await crowdFunding.totalRewardAmount()).to.be.equal(ethers.utils.parseEther(calculatedTotalAmount.toString()))
@@ -103,31 +107,37 @@ describe('CrowdFunding Contract', () => {
 		it("Cannot add reward for same investor second time", async () => {
 
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			expect(await crowdFunding.totalRewardAmount()).to.be.equal(ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			let newCalculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
 
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(newCalculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(newCalculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(newCalculatedTotalAmount.toString()))
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(newCalculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(newCalculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(newCalculatedTotalAmount.toString()))
 
 			const tx = crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor5.address, investor6.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			await expect(tx).to.be.revertedWith("Investor already added")
 		})
@@ -136,16 +146,18 @@ describe('CrowdFunding Contract', () => {
 	describe('\n\n#########################################\n claimRewards function\n#########################################', () => {
 		it("Cannot claim advance amount before release date", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			const rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(0);
 			const blockTime = (await ethers.provider.getBlock("latest")).timestamp
@@ -157,16 +169,21 @@ describe('CrowdFunding Contract', () => {
 
 		it("Must be 30 days between vestings's release dates", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
 
@@ -180,16 +197,21 @@ describe('CrowdFunding Contract', () => {
 
 		it("Can claim vestings when reach their release dates", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
 
@@ -205,31 +227,43 @@ describe('CrowdFunding Contract', () => {
 			console.log("User balance after claiming all the vestings: " + ethers.utils.formatEther(userBalance))
 			expect(userBalance).to.be.equal(ethers.utils.parseEther((1000 * 24).toString()))
 		})
+
 		it("Cannot claim investor when blacklested", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
 			console.log("Managers will add the investor's address to blacklist after 12th vesting.")
+
 			for (let i = 0; i <= 23; i++) {
 				const rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(i);
 				const blockTime = (await ethers.provider.getBlock("latest")).timestamp
-				await simulateTimeInSeconds(rewardsInfo.releaseDate.toNumber() - blockTime)
 
 				if (i == 12) {
-					await crowdFunding.connect(manager1).addToBlacklist(investor1.address);
-					await crowdFunding.connect(manager2).addToBlacklist(investor1.address);
-					await crowdFunding.connect(manager3).addToBlacklist(investor1.address);
+					console.log("Managers added user to blacklist")
+					const tokenBalanceBefore = await souls.balanceOf(crowdFunding.address)
+					await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+					await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+					await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
+					const tokenBalanceAfter = await souls.balanceOf(crowdFunding.address)
+					console.log("token balance in contract before: ", ethers.utils.formatEther(tokenBalanceBefore))
+					console.log("token balance in contract after: ", ethers.utils.formatEther(tokenBalanceAfter))
 				}
+				await simulateTimeInSeconds(rewardsInfo.releaseDate.toNumber() - blockTime)
+
 				if (i >= 12) {
 					const tx = crowdFunding.connect(investor1).claimRewards(i);
 					await expect(tx).to.be.revertedWith("Address is blacklisted")
@@ -240,79 +274,134 @@ describe('CrowdFunding Contract', () => {
 				}
 			}
 		})
-	})
 
-	describe('\n\n#########################################\n withdrawTokens function\n#########################################', () => {
-		it("Transfers tokens to given address when requested by 3 of managers", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000)) + 200
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+		it("Blacklisted investor can claim vestings which has released before blacklisting time", async () => {
+			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			await crowdFunding.connect(manager1).withdrawTokens(manager1.address, 200);
-			await crowdFunding.connect(manager2).withdrawTokens(manager1.address, 200);
+			console.log("Managers will add the investor's address to blacklist after 12th vesting.")
+			for (let i = 0; i <= 23; i++) {
+				const rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(i);
+				const blockTime = (await ethers.provider.getBlock("latest")).timestamp
 
-			await expect(() => crowdFunding.connect(manager3).withdrawTokens(manager1.address, 200))
-				.to.changeTokenBalance(souls, manager1, 200);
+				if (i == 12) {
+					await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+					await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+					await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
+				}
+				await simulateTimeInSeconds(rewardsInfo.releaseDate.toNumber() - blockTime)
+
+			}
+			for (let i = 0; i <= 23; i++) {
+				if (i >= 12) {
+					const tx = crowdFunding.connect(investor1).claimRewards(i);
+					await expect(tx).to.be.revertedWith("Address is blacklisted")
+					console.log("Vesting " + (i + 1) + ": Claim rejected because the address is blacklisted")
+				} else {
+					const rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(i);
+					await crowdFunding.connect(investor1).claimRewards(i);
+					console.log("Vesting " + (i + 1) + ": User claimed " + ethers.utils.formatEther(rewardsInfo.amount) + " tokens on " + new Date(rewardsInfo.releaseDate.toNumber() * 1000).toDateString())
+				}
+
+			}
 		})
 	})
+
+	// describe('\n\n#########################################\n withdrawTokens function\n#########################################', () => {
+	// 	it("Transfers tokens to given address when requested by 3 of managers", async () => {
+	// 		let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000)) + 200
+	// 		
+	// 		
+	// 		 
+	// 		// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+	// 		// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+	// 		// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+	// 		await crowdFunding.connect(owner).addRewards(
+	// 			[investor1.address, investor2.address, investor3.address],
+	// 			[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+	// 			[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+	// 			[23, 23, 23],
+	// 			(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+	// 			proxy.address
+	// 		)
+
+	// 		await crowdFunding.connect(manager1).withdrawTokens(manager1.address, 200);
+	// 		await crowdFunding.connect(manager2).withdrawTokens(manager1.address, 200);
+
+	// 		await expect(() => crowdFunding.connect(manager3).withdrawTokens(manager1.address, 200))
+	// 			.to.changeTokenBalance(souls, manager1, 200);
+	// 	})
+	// })
 
 	describe('\n\n#########################################\n deactivateInvestorVesting and activateInvestorVesting function\n#########################################', () => {
 		it("Reverts deactivating if address is not investor", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			const tx = crowdFunding.connect(manager1).deactivateInvestorVesting(investor4.address, 0);
+			const tx = crowdFunding.connect(manager1).deactivateInvestorVesting(investor4.address, 0, proxy.address);
 			await expect(tx).to.be.revertedWith("Reward owner not found")
 		})
 		it("Reverts deactivating if vesting index is invalid", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			const tx = crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 24);
+			const tx = crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 24, proxy.address);
 			await expect(tx).to.be.revertedWith("Invalid vesting index")
 		})
 
 		it("Reverts deactivating if vesting has already claimed", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			const rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(0);
 			const blockTime = (await ethers.provider.getBlock("latest")).timestamp
@@ -320,28 +409,32 @@ describe('CrowdFunding Contract', () => {
 
 			await crowdFunding.connect(investor1).claimRewards(0);
 
-			const tx = crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 0);
+			const tx = crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 0, proxy.address);
 			await expect(tx).to.be.revertedWith("Already claimed")
 
 		})
 
 		it("Managers can deactivate vesting for an investor with specified vesting index by voting if everything is ok", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			await crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 0);
-			await crowdFunding.connect(manager2).deactivateInvestorVesting(investor1.address, 0);
-			await crowdFunding.connect(manager3).deactivateInvestorVesting(investor1.address, 0);
+			await crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 0, proxy.address);
+			await crowdFunding.connect(manager2).deactivateInvestorVesting(investor1.address, 0, proxy.address);
+			await crowdFunding.connect(manager3).deactivateInvestorVesting(investor1.address, 0, proxy.address);
 			const rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(0);
 			await expect(rewardsInfo.isActive).to.be.equal(false)
 
@@ -353,45 +446,53 @@ describe('CrowdFunding Contract', () => {
 
 		it("Reverts activating if vesting is already active", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			const tx = crowdFunding.connect(manager1).activateInvestorVesting(investor1.address, 0);
+			const tx = crowdFunding.connect(manager1).activateInvestorVesting(investor1.address, 0, proxy.address);
 			await expect(tx).to.be.revertedWith("Already active")
 		})
 
 		it("Managers can activate vesting for an investor with specified vesting index by voting if everything is ok", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			await crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 0);
-			await crowdFunding.connect(manager2).deactivateInvestorVesting(investor1.address, 0);
-			await crowdFunding.connect(manager3).deactivateInvestorVesting(investor1.address, 0);
+			await crowdFunding.connect(manager1).deactivateInvestorVesting(investor1.address, 0, proxy.address);
+			await crowdFunding.connect(manager2).deactivateInvestorVesting(investor1.address, 0, proxy.address);
+			await crowdFunding.connect(manager3).deactivateInvestorVesting(investor1.address, 0, proxy.address);
 			let rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(0);
 			await expect(rewardsInfo.isActive).to.be.equal(false)
 
-			await crowdFunding.connect(manager1).activateInvestorVesting(investor1.address, 0);
-			await crowdFunding.connect(manager2).activateInvestorVesting(investor1.address, 0);
-			await crowdFunding.connect(manager3).activateInvestorVesting(investor1.address, 0);
+			await crowdFunding.connect(manager1).activateInvestorVesting(investor1.address, 0, proxy.address);
+			await crowdFunding.connect(manager2).activateInvestorVesting(investor1.address, 0, proxy.address);
+			await crowdFunding.connect(manager3).activateInvestorVesting(investor1.address, 0, proxy.address);
 			rewardsInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(0);
 			await expect(rewardsInfo.isActive).to.be.equal(true)
 
@@ -405,175 +506,165 @@ describe('CrowdFunding Contract', () => {
 	describe('\n\n#########################################\n addToBlacklist and removeFromBlacklist function\n#########################################', () => {
 		it("Reverts adding to blacklist if address is not investor", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			const tx = crowdFunding.connect(manager1).addToBlacklist(investor4.address);
+			const tx = crowdFunding.connect(manager1).addToBlacklist(investor4.address, proxy.address);
 			await expect(tx).to.be.revertedWith("Reward owner not found")
 		})
 
 		it("Reverts adding to blacklist if address is already blacklisted", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			await crowdFunding.connect(manager1).addToBlacklist(investor1.address);
-			await crowdFunding.connect(manager2).addToBlacklist(investor1.address);
-			await crowdFunding.connect(manager3).addToBlacklist(investor1.address);
+			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
 
-			const tx = crowdFunding.connect(manager1).addToBlacklist(investor1.address);
+			const tx = crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
 			await expect(tx).to.be.revertedWith("Already blacklisted")
 		})
 
 		it("Adds to blacklist if everything is ok", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			await crowdFunding.connect(manager1).addToBlacklist(investor1.address);
-			await crowdFunding.connect(manager2).addToBlacklist(investor1.address);
-			await crowdFunding.connect(manager3).addToBlacklist(investor1.address);
+			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
 
-			expect(await crowdFunding.blacklist(investor1.address)).to.be.equal(true)
+			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.gt(0)
 		})
+
 
 		it("Reverts removing from blacklist if address is not blacklisted", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 
-			const tx = crowdFunding.connect(manager1).addToBlacklist(investor4.address);
-			await expect(tx).to.be.revertedWith("Reward owner not found")
-		})
-
-		it("Reverts removing from blacklist if address is not blacklisted", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
-			)
-
-			const tx = crowdFunding.connect(manager1).removeFromBlacklist(investor1.address);
+			const tx = crowdFunding.connect(manager1).removeFromBlacklist(investor1.address, proxy.address);
 			await expect(tx).to.be.revertedWith("Not blacklisted")
 		})
 
 		it("Removes from blacklist if everything is ok", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			console.log("Managers are adding investor address to blacklist")
-			await crowdFunding.connect(manager1).addToBlacklist(investor1.address);
-			await crowdFunding.connect(manager2).addToBlacklist(investor1.address);
-			await crowdFunding.connect(manager3).addToBlacklist(investor1.address);
+			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
 
-			expect(await crowdFunding.blacklist(investor1.address)).to.be.equal(true)
+			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.gt(0)
 			console.log("Address is blacklisted")
 
 			console.log("Managers are removing investor address from blacklist")
 
-			await crowdFunding.connect(manager1).removeFromBlacklist(investor1.address);
-			await crowdFunding.connect(manager2).removeFromBlacklist(investor1.address);
-			await crowdFunding.connect(manager3).removeFromBlacklist(investor1.address);
+			const tokenBalanceBefore = await souls.balanceOf(crowdFunding.address)
+			await crowdFunding.connect(manager1).removeFromBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).removeFromBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).removeFromBlacklist(investor1.address, proxy.address);
+			const tokenBalanceAfter = await souls.balanceOf(crowdFunding.address)
 
-			expect(await crowdFunding.blacklist(investor1.address)).to.be.equal(false)
+			console.log("token balance in contract before: ", ethers.utils.formatEther(tokenBalanceBefore))
+
+			console.log("token balance in contract after: ", ethers.utils.formatEther(tokenBalanceAfter))
+
+			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.equal(0)
 			console.log("Address is not blacklisted now")
 		})
 	})
 
-	describe('\n\n#########################################\n fetchRewardsInfo function\n#########################################', () => {
+	describe('\n\n#########################################\n fetchRewardsInfo and fetchRewardsInfoForAccount function\n#########################################', () => {
 		it("Returns reward info for caller investor and given vesting index", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
 			await crowdFunding.connect(owner).addRewards(
 				[investor1.address, investor2.address, investor3.address],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
 				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
 			)
 			const investorVestingCount = await crowdFunding.connect(owner).investors(investor1.address)
 			for (let i = 0; i < investorVestingCount.vestingCount.toNumber(); i++) {
 				const rewardInfo = await crowdFunding.connect(investor1).fetchRewardsInfo(i)
+				const rewardInfo2 = await crowdFunding.fetchRewardsInfoForAccount(investor2.address, i)
 				expect(rewardInfo.amount).to.be.gt(0)
+				expect(rewardInfo2.amount).to.be.gt(0)
 			}
 		})
 	})
 
-	describe('\n\n#########################################\n fetchInvestorList function\n#########################################', () => {
-		it("returns address list of investors", async () => {
-			console.log("Defining rewards for 3 investors")
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-			await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
 
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60
-			)
-			const investors = await crowdFunding.connect(owner).fetchInvestorList()
-			console.log("Investor list in contract: ", investors)
-
-			expect(investors.length).to.be.equal(3)
-		})
-	})
 
 });

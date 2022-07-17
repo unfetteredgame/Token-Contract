@@ -49,8 +49,8 @@ contract LiquidityVault is Vault {
     function lockTokens(
         uint256 _totalAmount,
         uint256 _lockDurationInDays,
-        uint256 _countOfVesting,
-        uint256 _releaseFrequencyInDays
+        uint256,
+        uint256
     ) public override {
         require(_totalAmount == tokenAmountForLiquidity, "Invalid amount");
         super.lockTokens(_totalAmount, _lockDurationInDays, 1, 0);
@@ -61,7 +61,7 @@ contract LiquidityVault is Vault {
         _busdAmount = (tokenAmountForInitialLiquidityOnDEX * initialPriceForDex) / 1 ether;
     }
 
-    function withdrawTokens(address[] memory _receivers, uint256[] memory _amounts) external override {
+    function withdrawTokens(address[] calldata, uint256[] calldata) external pure override {
         revert("Withdrawing disabled from liquidity vault");
     }
 
@@ -124,7 +124,6 @@ contract LiquidityVault is Vault {
         view
         returns (uint256 _BUSDAmountForLiquidty)
     {
-        IPancakeFactory _pancakeFactory = IPancakeFactory(dexFactoryAddress);
         IPancakeRouter02 _pancakeRouter = IPancakeRouter02(dexRouterAddress);
         (uint256 BUSDReserve, uint256 soulsReserve) = _getReserves(BUSDTokenAddress, soulsTokenAddress);
         _BUSDAmountForLiquidty = _pancakeRouter.quote(_tokenAmountToAdd, soulsReserve, BUSDReserve);
@@ -139,7 +138,6 @@ contract LiquidityVault is Vault {
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_tokenAmountToAdd));
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
-            IPancakeFactory _pancakeFactory = IPancakeFactory(dexFactoryAddress);
             IPancakeRouter02 _pancakeRouter = IPancakeRouter02(dexRouterAddress);
 
             (uint256 BUSDReserve, uint256 soulsReserve) = _getReserves(BUSDTokenAddress, soulsTokenAddress);

@@ -102,6 +102,13 @@ describe('TokenProxy Contract', () => {
 			busdToken = await deployContract(owner, BUSDTokenArtifact) as BUSDToken
 			_BUSDTokenAddress = busdToken.address
 
+			console.log("Deploy Crowdfunding Contracts")
+			privateSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Private Sale", soulsToken.address, managers.address])) as CrowdFunding;
+			seedSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Seed Sale", soulsToken.address, managers.address])) as CrowdFunding;
+			strategicSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Strategic Sale", soulsToken.address, managers.address])) as CrowdFunding;
+			publicSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Public Sale", soulsToken.address, managers.address])) as CrowdFunding;
+			airdropFunding = (await deployContract(owner, CrowdFundingArtifact, ["Airdrop", soulsToken.address, managers.address])) as CrowdFunding;
+
 
 			console.log("Deploy Proxy Contract")
 			proxy = (await deployContract(owner, ProxyArtifact, [manager1.address, manager2.address, manager3.address, manager4.address, manager5.address])) as Proxy;
@@ -121,15 +128,7 @@ describe('TokenProxy Contract', () => {
 			airdropVault = (await deployContract(owner, VaultArtifact, ["Airdrop Vault", proxy.address, soulsToken.address, managers.address])) as Vault;
 			liquidityVault = (await deployContract(owner, LiquidityVaultArtifact, ["Liquidity Vault", proxy.address, soulsToken.address, managers.address, _dexFactoryAddress, _dexRouterAddress, _BUSDTokenAddress])) as LiquidityVault;
 
-			console.log("Deploy Crowdfunding Contracts")
-			privateSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Private Sale", soulsToken.address, managers.address])) as CrowdFunding;
-			seedSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Seed Sale", soulsToken.address, managers.address])) as CrowdFunding;
-			strategicSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Strategic Sale", soulsToken.address, managers.address])) as CrowdFunding;
-			publicSaleFunding = (await deployContract(owner, CrowdFundingArtifact, ["Public Sale", soulsToken.address, managers.address])) as CrowdFunding;
-			airdropFunding = (await deployContract(owner, CrowdFundingArtifact, ["Airdrop", soulsToken.address, managers.address])) as CrowdFunding;
-
-			console.log("Add to trusted sources in managers address")
-			
+	
 
 			console.log("Set Vault Addresses in Proxy Contract")
 

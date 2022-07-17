@@ -93,7 +93,7 @@ contract Vault {
     }
 
     //Managers function
-    function withdrawTokens(address[] memory _receivers, uint256[] memory _amounts) external virtual onlyManager {
+    function withdrawTokens(address[] calldata _receivers, uint256[] calldata _amounts) external virtual onlyManager {
         require(_receivers.length == _amounts.length, "Invalid parameter lengths");
         require(block.timestamp >= unlockTime, "Tokens are locked");
         string memory _title = "Withdraw Tokens With From Vault";

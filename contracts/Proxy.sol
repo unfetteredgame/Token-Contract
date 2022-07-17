@@ -62,6 +62,18 @@ contract Proxy is Ownable {
         managers.addAddressToTrustedSources(address(soulsToken), "Souls Token");
     }
 
+    function approveTokensForCrowdFundingContract(address _contractAddress) external onlyManager {
+        require(_contractAddress != address(0), "Zero address");
+        string memory _title = "Approve Tokens TForo Crowd Funding Contract";
+        bytes32 _valueInBytes = keccak256(abi.encodePacked(_contractAddress));
+
+        managers.approveTopic(_title, _valueInBytes);
+        if (managers.isApproved(_title, _valueInBytes)) {
+            soulsToken.approve(_contractAddress, type(uint256).max);
+            managers.deleteTopic(_title);
+        }
+    }
+
     //Managers Function
     function transferTokensToCrowdFundingContract(address _contractAddress, uint256 _totalAmount) external onlyManager {
         require(_contractAddress != address(0), "Zero address");
@@ -116,10 +128,10 @@ contract Proxy is Ownable {
         IERC20 BUSDToken = IERC20(_BUSDTokenAddress);
         BUSDToken.approve(liquidityVaultAddress, type(uint256).max); //addLiquidityOnDex function on LiquidityVault contract requires allowance
         BUSDToken.transferFrom(msg.sender, liquidityVaultAddress, _liquidityVault.getBUSDAmountForInitialLiquidity());
-		
-		console.log("testtt %s %s", _BUSDTokenAddress, BUSDToken.balanceOf( liquidityVaultAddress));
 
-		soulsToken.approve(liquidityVaultAddress, liquidityShare);
+        console.log("testtt %s %s", _BUSDTokenAddress, BUSDToken.balanceOf(liquidityVaultAddress));
+
+        soulsToken.approve(liquidityVaultAddress, liquidityShare);
         _liquidityVault.lockTokens(liquidityShare, 0, 1, 0);
 
         //Set pair address on token contract for bot protection.
@@ -187,14 +199,15 @@ contract Proxy is Ownable {
         treasuryVaultAddress = _treasuryVaultAddress;
         IVault _tresuaryVault = IVault(treasuryVaultAddress);
         soulsToken.approve(treasuryVaultAddress, treasuryShare);
-        _tresuaryVault.lockTokens(treasuryShare, 90, 36, 30); 
+        _tresuaryVault.lockTokens(treasuryShare, 90, 36, 30);
         managers.addAddressToTrustedSources(treasuryVaultAddress, "Treasury Vault");
     }
 
     function _initPlayToEarnVault(uint256 _gameStartTime) internal {
         IVault _playToEarnVault = IVault(playToEarnVaultAddress);
         soulsToken.approve(playToEarnVaultAddress, playToEarnShare);
-        _playToEarnVault.lockTokens(playToEarnShare, 60, 84, 30);
+        uint256 daysToGameStartTime = (_gameStartTime - block.timestamp) / 1 days;
+        _playToEarnVault.lockTokens(playToEarnShare, daysToGameStartTime + 60, 84, 30);
         managers.addAddressToTrustedSources(playToEarnVaultAddress, "PlayToEarn Vault");
     }
 
