@@ -5,19 +5,15 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../interfaces/IManagers.sol";
+import "../interfaces/ICrowdFunding.sol";
+import {TokenReward, ICrowdFunding} from "../interfaces/ICrowdFunding.sol";
 import "hardhat/console.sol";
 
-contract CrowdFunding is Pausable, Ownable {
+contract CrowdFunding is Pausable, Ownable, ERC165 {
     IManagers managers;
     IERC20 public soulsToken;
-
-    struct TokenReward {
-        uint256 amount;
-        uint256 releaseDate;
-        bool isClaimed;
-        bool isActive;
-    }
 
     struct Investor {
         uint256 totalAmount;
@@ -71,6 +67,10 @@ contract CrowdFunding is Pausable, Ownable {
         _;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(ICrowdFunding).interfaceId;
+    }
+
     /// @dev number of vestings for each owner must be one below of total vesting because of advance paymant and
     /// amount per vesting for each owner must be calculated with subtraction of advance amount from total amount.
     function addRewards(
@@ -119,7 +119,7 @@ contract CrowdFunding is Pausable, Ownable {
                 totalAmount: _investorTotalAmount,
                 vestingCount: _numberOfVesting + 1, //+1 for advancepayment
                 currentVestingIndex: 0,
-				blacklistDate:0
+                blacklistDate: 0
             });
             investorList.push(_rewardOwner);
         }
@@ -127,11 +127,6 @@ contract CrowdFunding is Pausable, Ownable {
 
         require(soulsToken.transferFrom(_tokenHolder, address(this), _totalAmount));
         // require(soulsToken.balanceOf(address(this)) >= totalRewardAmount, "Not enough free token balance in contract");
-    }
-
-    //TODO: change with supportsinterface
-    function isCrowdFunding() public pure returns (bool) {
-        return true;
     }
 
     function claimRewards(uint8 _vestingIndex)
@@ -152,23 +147,7 @@ contract CrowdFunding is Pausable, Ownable {
         totalClaimedAmount += tokenRewards[msg.sender][_vestingIndex].amount;
     }
 
-    //Managers Function
-    // function withdrawTokens(address _to, uint256 _amount) external onlyManager {
-    //     require(_to != address(0), "Zero address");
-    //     require(_amount > 0, "Zero amount");
 
-    //     string memory _title = "Withdraw Tokens";
-    //     bytes32 _valueInBytes = keccak256(abi.encodePacked(_to, _amount));
-    //     managers.approveTopic(_title, _valueInBytes);
-    //     if (managers.isApproved(_title, _valueInBytes)) {
-    //         soulsToken.transfer(_to, _amount);
-    //         managers.deleteTopic(_title);
-    //     }
-    //     require(
-    //         soulsToken.balanceOf(address(this)) - _amount >= totalRewardAmount,
-    //         "Amount more then free token balance"
-    //     );
-    // }
 
     //Managers Function
     function deactivateInvestorVesting(
@@ -194,7 +173,11 @@ contract CrowdFunding is Pausable, Ownable {
     }
 
     //Managers Function
-    function activateInvestorVesting(address _rewardOwner, uint8 _vestingIndex, address _tokenSource) external onlyManager {
+    function activateInvestorVesting(
+        address _rewardOwner,
+        uint8 _vestingIndex,
+        address _tokenSource
+    ) external onlyManager {
         require(_rewardOwner != address(0), "Zero address");
         require(tokenRewards[_rewardOwner].length > 0, "Reward owner not found");
         require(_vestingIndex < investors[_rewardOwner].vestingCount, "Invalid vesting index");
@@ -206,7 +189,7 @@ contract CrowdFunding is Pausable, Ownable {
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
             tokenRewards[_rewardOwner][_vestingIndex].isActive = true;
-			soulsToken.transferFrom(_tokenSource, address(this), tokenRewards[_rewardOwner][_vestingIndex].amount);
+            soulsToken.transferFrom(_tokenSource, address(this), tokenRewards[_rewardOwner][_vestingIndex].amount);
             managers.deleteTopic(_title);
         }
     }

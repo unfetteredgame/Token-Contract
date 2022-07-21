@@ -239,7 +239,7 @@ describe('Staking Contract', () => {
 			const tx = staking.connect(staker).withdrawStake(0)
 			await expect(tx).to.be.revertedWith("Early request")
 		})
-		it("accepsts withdrawing if everything is ok", async () => {
+		it("accepts withdrawing if everything is ok", async () => {
 			await proxy.connect(owner).transferSoulsToAddress(staker.address, ethers.utils.parseEther("50000"));
 			await souls.connect(staker).approve(staking.address, ethers.constants.MaxUint256);
 
@@ -292,7 +292,7 @@ describe('Staking Contract', () => {
 			await expect(tx).to.be.revertedWith("Can withdraw normal")
 		})
 
-		it("accepsts emergency withdrawing if everything is ok", async () => {
+		it("accepts emergency withdrawing if everything is ok", async () => {
 			await proxy.connect(owner).transferSoulsToAddress(staker.address, ethers.utils.parseEther("50000"));
 			await souls.connect(staker).approve(staking.address, ethers.constants.MaxUint256);
 

@@ -133,25 +133,35 @@ describe('TokenProxy Contract', () => {
 			console.log("Set Vault Addresses in Proxy Contract")
 
 			console.log("Init staking contract")
+
 			await proxy.initStakingContract(staking.address)
 
+			enum VaultEnumerator {
+				MARKETING,
+				ADVISOR,
+				AIRDROP,
+				TEAM,
+				EXCHANGES,
+				TREASURY
+			}
+
 			console.log("Init marketing Vault")
-			await proxy.initMarketingVault(marketingVault.address)
+			await proxy.initVault(marketingVault.address, VaultEnumerator.MARKETING)
 
 			console.log("Init Advisor Vault")
-			await proxy.initAdvisorVault(advisorVault.address)
+			await proxy.initVault(advisorVault.address, VaultEnumerator.ADVISOR)
 
 			console.log("Init Airdrop Vault")
-			await proxy.initAirdropVault(airdropVault.address)
+			await proxy.initVault(airdropVault.address, VaultEnumerator.AIRDROP)
 
 			console.log("Init Team Vault")
-			await proxy.initTeamVault(teamVault.address)
+			await proxy.initVault(teamVault.address, VaultEnumerator.TEAM)
 
 			console.log("Init Exchanges Vault")
-			await proxy.initExchangesVault(exchangesVault.address)
+			await proxy.initVault(exchangesVault.address, VaultEnumerator.EXCHANGES)
 
 			console.log("Init Treasury Vault")
-			await proxy.initTresuaryVault(treasuryVault.address)
+			await proxy.initVault(treasuryVault.address, VaultEnumerator.TREASURY)
 
 			console.log("Init PlayToEarn Vault")
 			_GameLaunchTime   = await (await ethers.provider.getBlock("latest")).timestamp + 1000

@@ -12,9 +12,7 @@ contract Vault {
 
     uint256 public releasedAmount;
     uint256 public currentVestingIndex;
-    uint256 public countOfVesting;
     uint256 public totalWithdrawnAmount;
-    uint256 public unlockTime;
     /**
 	@dev must be assigned in constructor on of these: 
 	"Marketing", "Advisor", "Airdrop", "Exchanges", "Treasury" or "Team"
@@ -34,7 +32,7 @@ contract Vault {
     event ReleaseVesting(uint256 indexed date, uint256 indexed vestingIndex);
 
     modifier onlyOnce() {
-        require(countOfVesting == 0, string.concat(vaultName, "Only once function was called before"));
+        require(tokenVestings.length == 0, "Only once function was called before");
         _;
     }
     modifier onlyProxy() {
@@ -64,38 +62,54 @@ contract Vault {
 
     function lockTokens(
         uint256 _totalAmount,
+        uint256 _initialRelease,
         uint256 _lockDurationInDays,
-        uint256 _countOfVesting,
+        uint256 _countOfVestings,
         uint256 _releaseFrequencyInDays
     ) public virtual onlyOnce onlyProxy {
         require(_totalAmount > 0, "Zero amount");
-        require(_countOfVesting > 0, "Invalid vesting count");
-        if (_countOfVesting != 1) {
+        require(_countOfVestings > 0, "Invalid vesting count");
+        if (_countOfVestings != 1) {
             require(_releaseFrequencyInDays > 0, "Invalid frequency");
         }
 
         IERC20 _soulsToken = IERC20(soulsTokenAddress);
         _soulsToken.transferFrom(msg.sender, address(this), _totalAmount);
+
+		uint256 _amountUsed= 0;
+
+        if (_initialRelease > 0) {
+            tokenVestings.push(
+                LockedToken({amount: _initialRelease, unlockTime: block.timestamp, released: false})
+            );
+			_amountUsed += _initialRelease;
+        }
         uint256 lockDuration = _lockDurationInDays * 1 days;
         uint256 releaseFrequency = _releaseFrequencyInDays * 1 days;
-        countOfVesting = _countOfVesting;
-        unlockTime = block.timestamp + lockDuration;
-
-        for (uint256 i = 0; i < _countOfVesting; i++) {
+        for (uint256 i = 0; i < _countOfVestings; i++) {
+			uint256 _amount = (_totalAmount - _initialRelease) / _countOfVestings;
+			if (i == _countOfVestings - 1){
+				_amount = _totalAmount - _amountUsed;  //use remaining dusts from division
+			}
             tokenVestings.push(
                 LockedToken({
-                    amount: _totalAmount / _countOfVesting,
+                    amount: _amount,
                     unlockTime: block.timestamp + lockDuration + (i * releaseFrequency),
                     released: false
                 })
             );
+			_amountUsed += _amount;
+
         }
     }
 
     //Managers function
     function withdrawTokens(address[] calldata _receivers, uint256[] calldata _amounts) external virtual onlyManager {
-        require(_receivers.length == _amounts.length, "Invalid parameter lengths");
-        require(block.timestamp >= unlockTime, "Tokens are locked");
+        require(_receivers.length == _amounts.length, "Receivers and Amounts must be in same size");
+        _withdrawTokens(_receivers, _amounts);
+    }
+
+    function _withdrawTokens(address[] calldata _receivers, uint256[] calldata _amounts) internal {
         string memory _title = "Withdraw Tokens With From Vault";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_receivers, _amounts));
         managers.approveTopic(_title, _valueInBytes);
@@ -103,25 +117,24 @@ contract Vault {
         if (managers.isApproved(_title, _valueInBytes)) {
             IERC20 _soulsToken = IERC20(soulsTokenAddress);
             uint256 _totalAmount;
-			bool _hasTransferError;
+            bool _hasTransferError;
             for (uint256 r = 0; r < _receivers.length; r++) {
                 address _receiver = _receivers[r];
                 uint256 _amount = _amounts[r];
                 require(_amount > 0, "Zero token amount in data");
                 _totalAmount += _amount;
 
-				//Ignore ERC20 transfer errors wity try/catch to revert with custom error
-                try _soulsToken.transfer(_receiver, _amount) returns (bool){
-
-				} catch{
-					_hasTransferError = true;
-				}
+                //Ignore ERC20 transfer errors wity try/catch to revert with custom error
+                try _soulsToken.transfer(_receiver, _amount) returns (bool) {} catch {
+                    _hasTransferError = true;
+                }
             }
             if (_totalAmount > releasedAmount - totalWithdrawnAmount) {
                 //Needs to release new vesting
                 uint256 _vestingIndex = currentVestingIndex;
 
-                require(_vestingIndex < countOfVesting, "Not enought balance and no more vesting");
+
+                require(_vestingIndex < tokenVestings.length, "Not enough released tokens and no more vesting");
                 require(block.timestamp >= tokenVestings[_vestingIndex].unlockTime, "Wait for vesting release date");
                 require(
                     tokenVestings[_vestingIndex].amount + releasedAmount - totalWithdrawnAmount >= _totalAmount,
@@ -137,7 +150,7 @@ contract Vault {
             totalWithdrawnAmount += _totalAmount;
             emit Withdraw(block.timestamp, _totalAmount);
             managers.deleteTopic(_title);
-			require (_hasTransferError == false, "Unhandled transfer exception");
+            require(_hasTransferError == false, "Unhandled transfer error");
         }
     }
 
@@ -148,7 +161,7 @@ contract Vault {
     function getAvailableAmountForWithdraw() public view returns (uint256 _amount) {
         _amount = releasedAmount - totalWithdrawnAmount;
         if (
-            currentVestingIndex < countOfVesting &&
+            currentVestingIndex < tokenVestings.length &&
             block.timestamp >= tokenVestings[currentVestingIndex].unlockTime &&
             tokenVestings[currentVestingIndex].released == false
         ) {

@@ -40,9 +40,16 @@ async function main() {
 	let _BUSDTokenAddress = ""
 
 	const BusdToken = await ethers.getContractFactory('BUSDToken');
-	const busdToken = await BusdToken.deploy() as BUSDTokenType;
+	const busdToken = await BusdToken.deploy() as BUSDTokenType; //FIXME: implement with real BUSD
 	await busdToken.deployed()
+	const signerAddress = await ethers.provider.getSigner().getAddress()
+	const busdBalance = await busdToken.balanceOf(signerAddress)
+	console.log(busdBalance)
+	if (busdBalance.lt(ethers.utils.parseEther("27000"))){
+		throw ("Signer must have more than or equal to 27000 BUSD in the account")
+	}
 
+	console.log("signer address", signerAddress)
 	switch (hre.network.name) {
 		case 'localhost':
 			_dexFactoryAddress = "0xB7926C0430Afb07AA7DEfDE6DA862aE0Bde767bc";
@@ -133,11 +140,11 @@ async function main() {
 	console.log("BUSD token address:", _BUSDTokenAddress);
 
 	//const busdToken = new ethers.Contract(_BUSDTokenAddress, IERC20Artifact.abi, ethers.provider.getSigner())
-	console.log("BUSD token balance:", await busdToken.balanceOf(await ethers.provider.getSigner().getAddress()));
-	console.log("Required BUSD amount", await liquidityVault.getBUSDAmountForInitialLiquidity())
+	console.log("BUSD token balance:", await busdToken.balanceOf(signerAddress));
+	console.log("Required BUSD amount", await liquidityVault.BUSDAmountForInitialLiquidity())
 	const tx = await busdToken.approve(proxy.address, ethers.constants.MaxUint256);
 	await tx.wait()
-	console.log("Allowance for proxy contract: ", await busdToken.allowance(await ethers.provider.getSigner().getAddress(), proxy.address))
+	console.log("Allowance for proxy contract: ", await busdToken.allowance(signerAddress, proxy.address))
 	console.log("Setting vault addresses on proxy contract")
 
 
@@ -164,7 +171,7 @@ async function main() {
 	await proxy.initExchangesVault(exchangesVault.address)
 
 	console.log("Init Treasury Vault")
-	await proxy.initTresuaryVault(treasuryVault.address)
+	await proxy.initTreasuryVault(treasuryVault.address)
 
 	console.log("Init liquidity vault")
 	// const gasEstimation = await proxy.estimateGas.initLiquidityVault(liquidityVault.address, _dexFactoryAddress, _dexRouterAddress, _BUSDTokenAddress)

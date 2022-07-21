@@ -45,6 +45,10 @@ const _dexRouterAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
 
 let _BUSDTokenAddress = ""
 
+//9.375.000 market maker
+//10 milyon gate.io
+//13.625.000 milyon bybit
+
 describe('LiquidityVault Contract', () => {
 	return
 	let owner: SignerWithAddress;
@@ -75,7 +79,6 @@ describe('LiquidityVault Contract', () => {
 
 		const tx = await busdToken.connect(owner).approve(proxy.address, ethers.constants.MaxUint256)
 		await tx.wait()
-
 		await proxy.connect(owner).initLiquidityVault(liquidityVault.address, busdToken.address);
 
 		console.log("")
@@ -83,14 +86,13 @@ describe('LiquidityVault Contract', () => {
 
 	});
 	describe('\n\n#########################################\n lockTokens function\n#########################################', () => {
-		it("Cannot call after initialization", async () => {
+		it("Cannot init more than one for each vault", async () => {
 			const tx = proxy.connect(owner).initLiquidityVault(liquidityVault.address, busdToken.address);
 			await expect(tx).to.be.revertedWith("Already Inited")
 		})
 
 		it("Contract token balance must increase with amount of locked tokens", async () => {
 			const contractBalance = await souls.balanceOf(liquidityVault.address);
-			console.log(ethers.utils.parseEther(contractBalance.toString()))
 			await expect(contractBalance).to.be.equal((await proxy.liquidityShare()).sub(await liquidityVault.tokenAmountForInitialLiquidityOnDEX()));
 		})
 
@@ -126,13 +128,17 @@ describe('LiquidityVault Contract', () => {
 			console.log("Pair contract address: ", dexPairAddress)
 			console.log("LP token balance of proxy contract: ", ethers.utils.formatEther(proxyLPbalance))
 		})
-		it("Managers can transfer LP tokens from proxy contract", async () => {
+		
+		it("Managers can transfer LP tokens from proxy contract after reach unlock time", async () => {
+			const tx = proxy.connect(manager1).withdrawLPTokens(addrs[0].address)
+			await expect(tx).to.be.revertedWith("LP tokens are locked still")
+			await gotoTime(await (await proxy.liquidityTokensUnlockTime()).toNumber())
 			await proxy.connect(manager1).withdrawLPTokens(addrs[0].address)
 			await proxy.connect(manager2).withdrawLPTokens(addrs[0].address)
 			await proxy.connect(manager3).withdrawLPTokens(addrs[0].address)
 			const dexPairAddress = await liquidityVault.DEXPairAddress();
 			const pairContract = new ethers.Contract(dexPairAddress, IPancakePairArtifact.abi) as IPancakePair
-			const balanceOfReceiver= await pairContract.connect(owner).balanceOf(addrs[0].address)
+			const balanceOfReceiver = await pairContract.connect(owner).balanceOf(addrs[0].address)
 			console.log("Withdrawn LP tokens amount: ", ethers.utils.formatEther(balanceOfReceiver))
 			expect(balanceOfReceiver).to.be.gt(0)
 		})
@@ -140,15 +146,29 @@ describe('LiquidityVault Contract', () => {
 
 	})
 	describe('\n\n#########################################\n withdrawTokens function\n#########################################', () => {
-
-		it("Managers can't withdraw from liquidity vault", async () => {
-			const unlockTime = await liquidityVault.connect(owner).unlockTime();
+		it("Managers can't use withdrawTokens for liquidity vault", async () => {
+			const vestings = await liquidityVault.getVestingData()
+			const unlockTime = vestings[0].unlockTime
 			await simulateTimeInSeconds(unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
 			const amountOfFirstVesting = (await liquidityVault.tokenVestings(0)).amount
 			const tx = liquidityVault.connect(manager1).withdrawTokens([addrs[0].address], [amountOfFirstVesting])
-			await expect(tx).to.be.revertedWith("Withdrawing disabled from liquidity vault")
+			await expect(tx).to.be.revertedWith("Use withdrawRemainingTokens function for Liquidity Vault")
+		})
+
+		it("Managers can withdraw tokens from liquidity vault using withdrawRemainingTokens after unlock time", async () => {
+			const vestings = await liquidityVault.getVestingData()
+			const unlockTime = vestings[0].unlockTime
+			await simulateTimeInSeconds(unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
+			const amountOfFirstVesting = (await liquidityVault.tokenVestings(0)).amount
+			const tx = liquidityVault.connect(manager1).withdrawRemainingTokens([addrs[0].address], [amountOfFirstVesting])
+			await expect(tx).to.be.revertedWith("Remaining tokens are still locked")
+			await gotoTime(await (await liquidityVault.remainingTokensUnlockTime()).toNumber())
+			await liquidityVault.connect(manager1).withdrawRemainingTokens([addrs[0].address], [amountOfFirstVesting])
+			
+
 		})
 	})
+
 	describe('\n\n#########################################\n addLiquidityOnDex function\n#########################################', () => {
 		it("Managers can add extra liquidity on DEX", async () => {
 			const soulsAmountToAdd = ethers.utils.parseEther("10000")
@@ -158,7 +178,7 @@ describe('LiquidityVault Contract', () => {
 			const proxyLPbalance = await pairContract.connect(owner).balanceOf(proxy.address)
 			console.log("LP token balance of proxy contract: ", ethers.utils.formatEther(proxyLPbalance))
 
-			
+
 			console.log("Enabling trading before adding new liquidity (required action)")
 			const startTime = (await ethers.provider.getBlock("latest")).timestamp
 			await souls.connect(manager1).enableTrading(startTime, 24 * 60 * 60)

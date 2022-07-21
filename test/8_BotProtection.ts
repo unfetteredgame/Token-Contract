@@ -56,7 +56,6 @@ const _GameLaunchTime = new Date("2022-12-12").getTime() / 1000 //TODO: SET CORR
 
 
 describe('Souls Token Contract', () => {
-	return
 	let busdToken: BUSDToken
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;

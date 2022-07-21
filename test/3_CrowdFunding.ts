@@ -31,6 +31,7 @@ const simulateTimeInSeconds = async (duration: number) => {
 
 
 describe('CrowdFunding Contract', () => {
+	return
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;
 	let manager2: SignerWithAddress;
@@ -143,7 +144,150 @@ describe('CrowdFunding Contract', () => {
 		})
 	})
 
+	describe('\n\n#########################################\n addToBlacklist and removeFromBlacklist function\n#########################################', () => {
+		it("Reverts adding to blacklist if address is not investor", async () => {
+			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			await crowdFunding.connect(owner).addRewards(
+				[investor1.address, investor2.address, investor3.address],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[23, 23, 23],
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
+			)
+
+			const tx = crowdFunding.connect(manager1).addToBlacklist(investor4.address, proxy.address);
+			await expect(tx).to.be.revertedWith("Reward owner not found")
+		})
+
+		it("Reverts adding to blacklist if address is already blacklisted", async () => {
+			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			await crowdFunding.connect(owner).addRewards(
+				[investor1.address, investor2.address, investor3.address],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[23, 23, 23],
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
+			)
+
+			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
+
+			const tx = crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await expect(tx).to.be.revertedWith("Already blacklisted")
+		})
+
+		it("Adds to blacklist if everything is ok", async () => {
+			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			await crowdFunding.connect(owner).addRewards(
+				[investor1.address, investor2.address, investor3.address],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[23, 23, 23],
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
+			)
+
+			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
+
+			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.gt(0)
+		})
+
+
+		it("Reverts removing from blacklist if address is not blacklisted", async () => {
+			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			await crowdFunding.connect(owner).addRewards(
+				[investor1.address, investor2.address, investor3.address],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[23, 23, 23],
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
+			)
+
+			const tx = crowdFunding.connect(manager1).removeFromBlacklist(investor1.address, proxy.address);
+			await expect(tx).to.be.revertedWith("Not blacklisted")
+		})
+
+		it("Removes from blacklist if everything is ok", async () => {
+			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
+
+
+
+			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
+
+			await crowdFunding.connect(owner).addRewards(
+				[investor1.address, investor2.address, investor3.address],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
+				[23, 23, 23],
+				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
+				proxy.address
+			)
+			console.log("Managers are adding investor address to blacklist")
+			const tokenBalanceBeforeBlacklist = await souls.balanceOf(crowdFunding.address)
+
+			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
+			const tokenBalanceAfterBlacklist = await souls.balanceOf(crowdFunding.address)
+
+			console.log("token balance in contract before: ", ethers.utils.formatEther(tokenBalanceBeforeBlacklist))
+			console.log("token balance in contract after: ", ethers.utils.formatEther(tokenBalanceAfterBlacklist))
+
+			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.gt(0)
+			console.log("Address is blacklisted")
+
+			console.log("Managers are removing investor address from blacklist")
+
+			const tokenBalanceBefore = await souls.balanceOf(crowdFunding.address)
+			await crowdFunding.connect(manager1).removeFromBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager2).removeFromBlacklist(investor1.address, proxy.address);
+			await crowdFunding.connect(manager3).removeFromBlacklist(investor1.address, proxy.address);
+			const tokenBalanceAfter = await souls.balanceOf(crowdFunding.address)
+
+			console.log("token balance in contract before: ", ethers.utils.formatEther(tokenBalanceBefore))
+			console.log("token balance in contract after: ", ethers.utils.formatEther(tokenBalanceAfter))
+
+			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.equal(0)
+			console.log("Address is not blacklisted now")
+		})
+	})
+
 	describe('\n\n#########################################\n claimRewards function\n#########################################', () => {
+		
 		it("Cannot claim advance amount before release date", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
 
@@ -346,6 +490,7 @@ describe('CrowdFunding Contract', () => {
 	// })
 
 	describe('\n\n#########################################\n deactivateInvestorVesting and activateInvestorVesting function\n#########################################', () => {
+		
 		it("Reverts deactivating if address is not investor", async () => {
 			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
 			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
@@ -503,142 +648,6 @@ describe('CrowdFunding Contract', () => {
 		})
 	})
 
-	describe('\n\n#########################################\n addToBlacklist and removeFromBlacklist function\n#########################################', () => {
-		it("Reverts adding to blacklist if address is not investor", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-
-			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
-				proxy.address
-			)
-
-			const tx = crowdFunding.connect(manager1).addToBlacklist(investor4.address, proxy.address);
-			await expect(tx).to.be.revertedWith("Reward owner not found")
-		})
-
-		it("Reverts adding to blacklist if address is already blacklisted", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-
-
-
-			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
-				proxy.address
-			)
-
-			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
-
-			const tx = crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
-			await expect(tx).to.be.revertedWith("Already blacklisted")
-		})
-
-		it("Adds to blacklist if everything is ok", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-
-
-
-			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
-				proxy.address
-			)
-
-			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
-
-			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.gt(0)
-		})
-
-
-		it("Reverts removing from blacklist if address is not blacklisted", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-
-
-
-			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
-				proxy.address
-			)
-
-			const tx = crowdFunding.connect(manager1).removeFromBlacklist(investor1.address, proxy.address);
-			await expect(tx).to.be.revertedWith("Not blacklisted")
-		})
-
-		it("Removes from blacklist if everything is ok", async () => {
-			let calculatedTotalAmount = 1000 + 2000 + 3000 + (23 * (1000 + 2000 + 3000))
-
-
-
-			// await proxy.connect(manager1).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager2).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-			// await proxy.connect(manager3).transferTokensToCrowdFundingContract(crowdFunding.address, ethers.utils.parseEther(calculatedTotalAmount.toString()))
-
-			await crowdFunding.connect(owner).addRewards(
-				[investor1.address, investor2.address, investor3.address],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[ethers.utils.parseEther("1000"), ethers.utils.parseEther("2000"), ethers.utils.parseEther("3000")],
-				[23, 23, 23],
-				(await ethers.provider.getBlock("latest")).timestamp + 7 * 24 * 60 * 60,
-				proxy.address
-			)
-			console.log("Managers are adding investor address to blacklist")
-			await crowdFunding.connect(manager1).addToBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager2).addToBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager3).addToBlacklist(investor1.address, proxy.address);
-
-			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.gt(0)
-			console.log("Address is blacklisted")
-
-			console.log("Managers are removing investor address from blacklist")
-
-			const tokenBalanceBefore = await souls.balanceOf(crowdFunding.address)
-			await crowdFunding.connect(manager1).removeFromBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager2).removeFromBlacklist(investor1.address, proxy.address);
-			await crowdFunding.connect(manager3).removeFromBlacklist(investor1.address, proxy.address);
-			const tokenBalanceAfter = await souls.balanceOf(crowdFunding.address)
-
-			console.log("token balance in contract before: ", ethers.utils.formatEther(tokenBalanceBefore))
-
-			console.log("token balance in contract after: ", ethers.utils.formatEther(tokenBalanceAfter))
-
-			expect(await (await crowdFunding.investors(investor1.address)).blacklistDate).to.be.equal(0)
-			console.log("Address is not blacklisted now")
-		})
-	})
 
 	describe('\n\n#########################################\n fetchRewardsInfo and fetchRewardsInfoForAccount function\n#########################################', () => {
 		it("Returns reward info for caller investor and given vesting index", async () => {

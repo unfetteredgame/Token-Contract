@@ -36,7 +36,7 @@ const _dexRouterAddress = "0x78867BbEeF44f2326bF8DDd1941a4439382EF2A7";
 
 const _BUSDTokenAddress = "0x8c552cF3F61aBEA86741e9828C1A4Eb31d48590D"
 
-describe('Vault Contract', () => {
+describe('Marketing Vault Contract', () => {
 	return
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;
@@ -60,15 +60,16 @@ describe('Vault Contract', () => {
 		souls = new ethers.Contract(await proxy.soulsToken(), SoulsArtifact.abi, owner) as SoulsToken
 		marketingVault = (await deployContract(owner, VaultArtifact, ["Marketing Vault", proxy.address, souls.address, managers.address])) as Vault;
 
-		await proxy.connect(owner).initMarketingVault(marketingVault.address);
+
+		await proxy.connect(owner).initVault(marketingVault.address, 0)
 
 		console.log("")
 
 
 	});
 	describe('\n\n#########################################\n lockTokens function\n#########################################', () => {
-		it("Cannot call after initialization", async () => {
-			const tx = proxy.connect(owner).initMarketingVault(marketingVault.address);
+		it("Cannot init more than one for each vault", async () => {
+			const tx = proxy.connect(owner).initVault(marketingVault.address, 0);
 			await expect(tx).to.be.revertedWith("Already Inited")
 		})
 
@@ -101,13 +102,18 @@ describe('Vault Contract', () => {
 	})
 
 	describe('\n\n#########################################\n withdrawTokens function\n#########################################', () => {
-		it("Cannot withdraw before unlock time", async () => {
-			const tx = marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [ethers.utils.parseEther("1")])
-			await expect(tx).to.be.revertedWith("Tokens are locked")
+		it("Can withdraw initial release amount", async () => {
+			await marketingVault.connect(manager1).withdrawTokens([addrs[0].address], [ethers.utils.parseEther("1")])
+			await marketingVault.connect(manager2).withdrawTokens([addrs[0].address], [ethers.utils.parseEther("1")])
+			await marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [ethers.utils.parseEther("1")])
+			const vestignData = await marketingVault.getVestingData()
+			expect(vestignData[0].released).to.be.equal(true)
 		})
 
 		it("Relases next vesting automatically after unlockTime if released amount is not enough", async () => {
-			const unlockTime = await marketingVault.connect(owner).unlockTime();
+			// const unlockTime = await marketingVault.connect(owner).unlockTime();
+			const vestings = await marketingVault.getVestingData()
+			const unlockTime = vestings[0].unlockTime
 			await simulateTimeInSeconds(unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
 			const amountOfFirstVesting = (await marketingVault.tokenVestings(0)).amount
 			await marketingVault.connect(manager1).withdrawTokens([addrs[0].address], [amountOfFirstVesting])
@@ -117,7 +123,8 @@ describe('Vault Contract', () => {
 		})
 
 		it("Can work many times if there is enough relased amount", async () => {
-			const unlockTime = await marketingVault.connect(owner).unlockTime();
+			const vestings = await marketingVault.getVestingData()
+			const unlockTime = vestings[0].unlockTime
 			await simulateTimeInSeconds(unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
 			const amountOfFirstVesting = (await marketingVault.tokenVestings(0)).amount
 			let expectedBalance = BigNumber.from(0)
@@ -144,7 +151,6 @@ describe('Vault Contract', () => {
 			const tx = marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [amountOfFirstVesting.div(3)])
 			await expect(tx).to.be.revertedWith("Wait for vesting release date")
 
-			const vestings = await marketingVault.getVestingData()
 			await simulateTimeInSeconds(vestings[1].unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
 
 
@@ -153,16 +159,13 @@ describe('Vault Contract', () => {
 		it("Can withdraw all vestings when unlocked", async () => {
 			const vestingData = await marketingVault.getVestingData()
 			for (let v = 0; v < vestingData.length; v++) {
-				console.log("Withdraw vesting: ", v)
 				const vesting = vestingData[v];
+				console.log("Withdraw vesting: ", v, ethers.utils.formatEther(vesting.amount))
 				await simulateTimeInSeconds(vesting.unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
 				const amountOfVesting = vesting.amount
-				await marketingVault.connect(manager1).withdrawTokens([addrs[0].address], [amountOfVesting.div(2)])
-				await marketingVault.connect(manager2).withdrawTokens([addrs[0].address], [amountOfVesting.div(2)])
-				await marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [amountOfVesting.div(2)])
-				await marketingVault.connect(manager1).withdrawTokens([addrs[0].address], [amountOfVesting.div(2)])
-				await marketingVault.connect(manager2).withdrawTokens([addrs[0].address], [amountOfVesting.div(2)])
-				await marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [amountOfVesting.div(2)])
+				await marketingVault.connect(manager1).withdrawTokens([addrs[0].address], [amountOfVesting])
+				await marketingVault.connect(manager2).withdrawTokens([addrs[0].address], [amountOfVesting])
+				await marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [amountOfVesting])
 			}
 			console.log("Vault contract balance after withdraw all vesting: ", (await souls.balanceOf(marketingVault.address)).toString())
 			expect(await souls.balanceOf(marketingVault.address)).to.be.equal(0)
@@ -188,7 +191,8 @@ describe('Vault Contract', () => {
 
 
 		it("Cannot withdraw more than total of released amount and unlocked vesting amount", async () => {
-			const unlockTime = await marketingVault.connect(owner).unlockTime();
+			const vestings = await marketingVault.getVestingData()
+			const unlockTime = vestings[0].unlockTime
 			await simulateTimeInSeconds(unlockTime.toNumber() - (await ethers.provider.getBlock("latest")).timestamp)
 			const amountOfFirstVesting = (await marketingVault.tokenVestings(0)).amount
 			await marketingVault.connect(manager1).withdrawTokens([addrs[0].address], [amountOfFirstVesting.add(1)])
@@ -217,7 +221,7 @@ describe('Vault Contract', () => {
 				}
 			}
 			const tx = marketingVault.connect(manager3).withdrawTokens([addrs[0].address], [vestingData[vestingData.length - 1].amount.div(2).add(ethers.utils.parseEther("1"))])
-			await expect(tx).to.be.revertedWith("Not enought balance and no more vesting")
+			await expect(tx).to.be.revertedWith("Not enough released tokens and no more vesting")
 
 		})
 	})

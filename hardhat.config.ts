@@ -21,6 +21,9 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 const config: HardhatUserConfig = {
+	mocha: {
+		timeout: 100000000
+	},
 	solidity: {
 		compilers: [
 			{
@@ -54,8 +57,8 @@ const config: HardhatUserConfig = {
 			forking: {
 				url: "https://data-seed-prebsc-1-s1.binance.org:8545",
 			},
-			gasPrice:5000000000,
-			allowUnlimitedContractSize:true
+			gasPrice: 5000000000,
+			allowUnlimitedContractSize: true,
 		},
 
 		rinkeby: {
@@ -66,7 +69,7 @@ const config: HardhatUserConfig = {
 				count: 20,
 				mnemonic: process.env.MNEMONIC,
 				path: "m/44'/60'/0'/0",
-			}, 
+			},
 			gasPrice: 5000000000
 		},
 		bsctestnet: {
@@ -78,7 +81,7 @@ const config: HardhatUserConfig = {
 				mnemonic: process.env.MNEMONIC,
 				path: "m/44'/60'/0'/0",
 			},
-			gasPrice:5000000000
+			gasPrice: 5000000000
 		},
 		bscmainnet: {
 			allowUnlimitedContractSize: true,

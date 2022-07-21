@@ -2,23 +2,26 @@
 pragma solidity 0.8.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/ILiquidityVault.sol";
 import "../interfaces/IStaking.sol";
 import "../interfaces/ICrowdFunding.sol";
 import "./Managers.sol";
 import "./SoulsToken.sol";
-
 import "hardhat/console.sol";
 
 contract Proxy is Ownable {
+    using ERC165Checker for address;
     SoulsToken public soulsToken;
     Managers public managers;
+
+    uint256 public liquidityTokensUnlockTime;
 
     //Tokenomi
     uint256 public marketingShare = 300_000_000 ether;
     uint256 public exchangesShare = 150_000_000 ether;
-    uint256 public liquidityShare = 60_000_000 ether; //Includes CEX and DEX
+    uint256 public liquidityShare = 60_000_000 ether;
     uint256 public stakingShare = 300_000_000 ether;
     uint256 public advisorShare = 150_000_000 ether;
     uint256 public airdropShare = 90_000_000 ether;
@@ -35,8 +38,16 @@ contract Proxy is Ownable {
     address playToEarnVaultAddress;
     address treasuryVaultAddress;
     address stakingAddress;
-
     address dexPairAddress;
+
+    enum VaultEnumerator {
+        MARKETING,
+        ADVISOR,
+        AIRDROP,
+        TEAM,
+        EXCHANGES,
+        TREASURY
+    }
 
     modifier onlyManager() {
         require(managers.isManager(msg.sender), "Not authorized");
@@ -62,9 +73,19 @@ contract Proxy is Ownable {
         managers.addAddressToTrustedSources(address(soulsToken), "Souls Token");
     }
 
+    function initStakingContract(address _stakingAddress) external onlyOwner {
+        require(stakingAddress == address(0), "Already Inited");
+        require(_stakingAddress != address(0), "Zero address");
+        stakingAddress = _stakingAddress;
+
+        IStaking _staking = IStaking(stakingAddress);
+        require(soulsToken.transfer(address(_staking), stakingShare));
+        managers.addAddressToTrustedSources(stakingAddress, "Staking");
+    }
+
     function approveTokensForCrowdFundingContract(address _contractAddress) external onlyManager {
         require(_contractAddress != address(0), "Zero address");
-        string memory _title = "Approve Tokens TForo Crowd Funding Contract";
+        string memory _title = "Approve Tokens for Crowd Funding Contract";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_contractAddress));
 
         managers.approveTopic(_title, _valueInBytes);
@@ -78,26 +99,23 @@ contract Proxy is Ownable {
     function transferTokensToCrowdFundingContract(address _contractAddress, uint256 _totalAmount) external onlyManager {
         require(_contractAddress != address(0), "Zero address");
         require(_totalAmount > 0, "Zero amount");
-        require(ICrowdFunding(_contractAddress).isCrowdFunding(), "Not crowdfunding contract");
+        require(_contractAddress.supportsInterface(type(ICrowdFunding).interfaceId), "Not crowdfunding contract");
+        //require(ICrowdFunding(_contractAddress).isCrowdFunding(), "Not crowdfunding contract");
 
         string memory _title = "Transfer Tokens To Crowd Funding Contract";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_contractAddress, _totalAmount));
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
-            _transferSoulsToAddress(_contractAddress, _totalAmount);
+            soulsToken.transfer(_contractAddress, _totalAmount);
             managers.deleteTopic(_title);
         }
-    }
-
-    function _transferSoulsToAddress(address _receiver, uint256 _amount) internal {
-        soulsToken.transfer(_receiver, _amount);
     }
 
     //Managers Function
     function initPlayToEarnVault(address _playToEarnVaultAddress, uint256 _gameStartTime) external onlyManager {
         require(playToEarnVaultAddress == address(0), "Already Inited");
         require(_playToEarnVaultAddress != address(0), "Zero address");
-        require(_gameStartTime > block.timestamp, "Game start time is in the past");
+        require(_gameStartTime < block.timestamp, "Game start time must be in the past");
 
         string memory _title = "Init Play To Earn Vault";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_gameStartTime));
@@ -109,16 +127,6 @@ contract Proxy is Ownable {
         }
     }
 
-    function initStakingContract(address _stakingAddress) external onlyOwner {
-        require(stakingAddress == address(0), "Already Inited");
-        require(_stakingAddress != address(0), "Zero address");
-        stakingAddress = _stakingAddress;
-
-        IStaking _staking = IStaking(stakingAddress);
-        require(soulsToken.transfer(address(_staking), stakingShare));
-        managers.addAddressToTrustedSources(stakingAddress, "Staking");
-    }
-
     function initLiquidityVault(address _liquidityVaultAddress, address _BUSDTokenAddress) external onlyOwner {
         require(liquidityVaultAddress == address(0), "Already Inited");
         liquidityVaultAddress = _liquidityVaultAddress;
@@ -126,14 +134,12 @@ contract Proxy is Ownable {
         ILiquidityVault _liquidityVault = ILiquidityVault(liquidityVaultAddress);
 
         IERC20 BUSDToken = IERC20(_BUSDTokenAddress);
-        BUSDToken.approve(liquidityVaultAddress, type(uint256).max); //addLiquidityOnDex function on LiquidityVault contract requires allowance
-        BUSDToken.transferFrom(msg.sender, liquidityVaultAddress, _liquidityVault.getBUSDAmountForInitialLiquidity());
-
-        console.log("testtt %s %s", _BUSDTokenAddress, BUSDToken.balanceOf(liquidityVaultAddress));
+        BUSDToken.approve(liquidityVaultAddress, type(uint256).max);
+        BUSDToken.transferFrom(msg.sender, liquidityVaultAddress, _liquidityVault.BUSDAmountForInitialLiquidity());
 
         soulsToken.approve(liquidityVaultAddress, liquidityShare);
-        _liquidityVault.lockTokens(liquidityShare, 0, 1, 0);
-
+        _liquidityVault.lockTokens(liquidityShare);
+        liquidityTokensUnlockTime = block.timestamp + 365 days;
         //Set pair address on token contract for bot protection.
         dexPairAddress = _liquidityVault.getDEXPairAddress();
         soulsToken.setDexPairAddress(dexPairAddress);
@@ -141,73 +147,89 @@ contract Proxy is Ownable {
         managers.addAddressToTrustedSources(liquidityVaultAddress, "Liquidity Vault");
     }
 
-    function initMarketingVault(address _marketingVaultAddress) external onlyOwner {
-        require(marketingVaultAddress == address(0), "Already Inited");
-        require(_marketingVaultAddress != address(0), "Zero address");
-        marketingVaultAddress = _marketingVaultAddress;
+    function initVault(address _vaultAddress, VaultEnumerator _vaultToInit) external onlyOwner {
+        string memory _vaultName;
+        uint256 _vaultShare;
+        uint256 _initialRelease;
+        uint256 _cliffDuration;
+        uint256 _vestingCount;
+        uint256 _vestingFrequency;
+        if (_vaultToInit == VaultEnumerator.MARKETING) {
+            require(marketingVaultAddress == address(0), "Already Inited");
+            require(_vaultAddress != address(0), "Zero address");
+            marketingVaultAddress = _vaultAddress;
+            _vaultName = "Marketing Vault";
+            _vaultShare = marketingShare;
+            _initialRelease = 6_000_000 ether;
+            _cliffDuration = 90;
+            _vestingCount = 24;
+            _vestingFrequency = 30;
+        } else if (_vaultToInit == VaultEnumerator.ADVISOR) {
+            require(advisorVaultAddress == address(0), "Already Inited");
+            require(_vaultAddress != address(0), "Zero address");
 
-        IVault _marketingVault = IVault(marketingVaultAddress);
-        soulsToken.approve(marketingVaultAddress, marketingShare);
-        _marketingVault.lockTokens(marketingShare, 90, 24, 30);
-        managers.addAddressToTrustedSources(marketingVaultAddress, "Marketing Vault");
-    }
+            advisorVaultAddress = _vaultAddress;
+            _vaultName = "Advisor Vault";
+            _vaultShare = advisorShare;
+            _initialRelease = 0;
+            _cliffDuration = 365;
+            _vestingCount = 24;
+            _vestingFrequency = 30;
+        } else if (_vaultToInit == VaultEnumerator.AIRDROP) {
+            require(airdropVaultAddress == address(0), "Already Inited");
+            require(_vaultAddress != address(0), "Zero address");
+            airdropVaultAddress = _vaultAddress;
+            _vaultName = "Airdrop Vault";
+            _vaultShare = airdropShare;
+            _initialRelease = 0;
+            _cliffDuration = 240;
+            _vestingCount = 12;
+            _vestingFrequency = 30;
+        } else if (_vaultToInit == VaultEnumerator.TEAM) {
+            require(teamVaultAddress == address(0), "Already Inited");
+            require(_vaultAddress != address(0), "Zero address");
+            teamVaultAddress = _vaultAddress;
+            _vaultName = "Team Vault";
+            _vaultShare = teamShare;
+            _initialRelease = 0;
+            _cliffDuration = 365;
+            _vestingCount = 24;
+            _vestingFrequency = 30;
+        } else if (_vaultToInit == VaultEnumerator.EXCHANGES) {
+            require(advisorVaultAddress == address(0), "Already Inited");
+            require(_vaultAddress != address(0), "Zero address");
+            advisorVaultAddress = _vaultAddress;
+            _vaultName = "Advisor Vault";
+            _vaultShare = advisorShare;
+            _initialRelease = 0;
+            _cliffDuration = 90;
+            _vestingCount = 24;
+            _vestingFrequency = 30;
+        } else if (_vaultToInit == VaultEnumerator.TREASURY) {
+            require(treasuryVaultAddress == address(0), "Already Inited");
+            require(_vaultAddress != address(0), "Zero address");
+            treasuryVaultAddress = _vaultAddress;
+            _vaultName = "Treasury Vault";
+            _vaultShare = treasuryShare;
+            _initialRelease = 0;
+            _cliffDuration = 90;
+            _vestingCount = 36;
+            _vestingFrequency = 30;
+        } else {
+            revert("Invalid vault");
+        }
 
-    function initAdvisorVault(address _advisorVaultAddress) external onlyOwner {
-        require(advisorVaultAddress == address(0), "Already Inited");
-        require(_advisorVaultAddress != address(0), "Zero address");
-        advisorVaultAddress = _advisorVaultAddress;
-
-        IVault _advisorVault = IVault(advisorVaultAddress);
-        soulsToken.approve(advisorVaultAddress, advisorShare);
-        _advisorVault.lockTokens(advisorShare, 365, 24, 30);
-        managers.addAddressToTrustedSources(advisorVaultAddress, "Advisor Vault");
-    }
-
-    function initAirdropVault(address _airdropVaultAddress) external onlyOwner {
-        require(airdropVaultAddress == address(0), "Already Inited");
-        require(_airdropVaultAddress != address(0), "Zero address");
-        airdropVaultAddress = _airdropVaultAddress;
-        IVault _airdropVault = IVault(airdropVaultAddress);
-        soulsToken.approve(airdropVaultAddress, airdropShare);
-        _airdropVault.lockTokens(airdropShare, 240, 12, 30);
-        managers.addAddressToTrustedSources(airdropVaultAddress, "Airdrop Vault");
-    }
-
-    function initTeamVault(address _teamVaultAddress) external onlyOwner {
-        require(teamVaultAddress == address(0), "Already Inited");
-        require(_teamVaultAddress != address(0), "Zero address");
-        teamVaultAddress = _teamVaultAddress;
-        IVault _teamVault = IVault(teamVaultAddress);
-        soulsToken.approve(teamVaultAddress, teamShare);
-        _teamVault.lockTokens(teamShare, 365, 12, 30);
-        managers.addAddressToTrustedSources(teamVaultAddress, "Team Vault");
-    }
-
-    function initExchangesVault(address _exchangesVaultAddress) external onlyOwner {
-        require(exchangesVaultAddress == address(0), "Already Inited");
-        require(_exchangesVaultAddress != address(0), "Zero address");
-        exchangesVaultAddress = _exchangesVaultAddress;
-        IVault _exchnagesVault = IVault(exchangesVaultAddress);
-        soulsToken.approve(exchangesVaultAddress, exchangesShare);
-        _exchnagesVault.lockTokens(exchangesShare, 90, 24, 30);
-        managers.addAddressToTrustedSources(exchangesVaultAddress, "Exchanges Vault");
-    }
-
-    function initTresuaryVault(address _treasuryVaultAddress) external onlyOwner {
-        require(treasuryVaultAddress == address(0), "Already Inited");
-        require(_treasuryVaultAddress != address(0), "Zero address");
-        treasuryVaultAddress = _treasuryVaultAddress;
-        IVault _tresuaryVault = IVault(treasuryVaultAddress);
-        soulsToken.approve(treasuryVaultAddress, treasuryShare);
-        _tresuaryVault.lockTokens(treasuryShare, 90, 36, 30);
-        managers.addAddressToTrustedSources(treasuryVaultAddress, "Treasury Vault");
+        soulsToken.approve(_vaultAddress, _vaultShare);
+        IVault _vault = IVault(_vaultAddress);
+        _vault.lockTokens(_vaultShare, _initialRelease, _cliffDuration, _vestingCount, _vestingFrequency);
+        managers.addAddressToTrustedSources(_vaultAddress, _vaultName);
     }
 
     function _initPlayToEarnVault(uint256 _gameStartTime) internal {
         IVault _playToEarnVault = IVault(playToEarnVaultAddress);
         soulsToken.approve(playToEarnVaultAddress, playToEarnShare);
-        uint256 daysToGameStartTime = (_gameStartTime - block.timestamp) / 1 days;
-        _playToEarnVault.lockTokens(playToEarnShare, daysToGameStartTime + 60, 84, 30);
+        uint256 daysSinceGameStartTime = (block.timestamp - _gameStartTime) / 1 days;
+        _playToEarnVault.lockTokens(playToEarnShare, 0, 60 - daysSinceGameStartTime, 84, 30);
         managers.addAddressToTrustedSources(playToEarnVaultAddress, "PlayToEarn Vault");
     }
 
@@ -217,6 +239,7 @@ contract Proxy is Ownable {
     }
 
     function withdrawLPTokens(address _to) external onlyManager {
+        require(block.timestamp > liquidityTokensUnlockTime, "LP tokens are locked still");
         require(dexPairAddress != address(0), "Init Liquidity Vault first");
         require(_to != address(0), "Zero address");
         uint256 _tokenBalance = IERC20(dexPairAddress).balanceOf(address(this));

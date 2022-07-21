@@ -42,7 +42,6 @@ contract SoulsToken is ERC20Burnable, Ownable {
         require(_managersAddress != address(0), "Zero address");
 
         _mint(msg.sender, maxSupply);
-
         //TODO: Decide the parameter values for bot protection
         botProtectionParams = BotProtectionParams({
             activateIfBalanceExeeds: 10000 ether,

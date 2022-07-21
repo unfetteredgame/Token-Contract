@@ -10,19 +10,16 @@ import "../interfaces/IPancakePair.sol";
 import "hardhat/console.sol";
 
 contract LiquidityVault is Vault {
-	//TODO: cex implementation
     uint256 public tokenAmountForLiquidity = 60_000_000 ether; //Includes CEX and DEX
+    uint256 public totalDEXShare = 27_000_000 ether;
     uint256 public tokenAmountForInitialLiquidityOnDEX = 3_000_000 ether; //Just for setting price, will be added more later manually
-	uint256 public totalDEXShare = 27_000_000; //TODO: calculations
-	//9.375.000 market maker
-	//23.625.000 milyon kaldı 
-	//10 milyon gate.io
-	//13.625.000 milyon bybit
+    uint256 public amountUsedForLiquidityOnDEX;
+    uint256 public CEXShare = 33_000_000 ether;
 
-
-    uint256 public marketMakerShare = 9_375_000;
+    uint256 public marketMakerShare = 9_375_000 ether;
     uint256 public initialPriceForDex = 0.009 ether;
     uint256 public balanceAddedLiquidityOnDex;
+    uint256 public remainingTokensUnlockTime;
 
     uint256 public marketMakerShareWithdrawDeadline;
     uint256 public marketMakerShareWithdrawnAmount;
@@ -46,23 +43,25 @@ contract LiquidityVault is Vault {
         marketMakerShareWithdrawDeadline = block.timestamp + 1 days;
     }
 
-    function lockTokens(
-        uint256 _totalAmount,
-        uint256 _lockDurationInDays,
-        uint256,
-        uint256
-    ) public override {
+    function lockTokens(uint256 _totalAmount) public {
         require(_totalAmount == tokenAmountForLiquidity, "Invalid amount");
-        super.lockTokens(_totalAmount, _lockDurationInDays, 1, 0);
+        super.lockTokens(_totalAmount, 0, 0, 1, 0);
         _createLiquidityOnDex(dexFactoryAddress, dexRouterAddress, BUSDTokenAddress);
+        remainingTokensUnlockTime = block.timestamp + 365 days;
     }
 
-    function getBUSDAmountForInitialLiquidity() public view returns (uint256 _busdAmount) {
+    function BUSDAmountForInitialLiquidity() public view returns (uint256 _busdAmount) {
         _busdAmount = (tokenAmountForInitialLiquidityOnDEX * initialPriceForDex) / 1 ether;
     }
 
     function withdrawTokens(address[] calldata, uint256[] calldata) external pure override {
-        revert("Withdrawing disabled from liquidity vault");
+        revert("Use withdrawRemainingTokens function for Liquidity Vault");
+    }
+
+    function withdrawRemainingTokens(address[] calldata _receivers, uint256[] calldata _amounts) external {
+        require(block.timestamp > remainingTokensUnlockTime, "Remaining tokens are still locked");
+        require(_receivers.length == _amounts.length, "Receivers and Amounts must be in same size");
+        _withdrawTokens(_receivers, _amounts);
     }
 
     function _createLiquidityOnDex(
@@ -72,8 +71,8 @@ contract LiquidityVault is Vault {
     ) internal {
         IPancakeFactory _pancakeFactory = IPancakeFactory(_dexFactoryAddress);
         IPancakeRouter02 _pancakeRouter = IPancakeRouter02(_dexRouterAddress);
-		
-        uint256 _BUSDAmountForLiquidty = getBUSDAmountForInitialLiquidity();
+
+        uint256 _BUSDAmountForLiquidty = BUSDAmountForInitialLiquidity();
         balanceAddedLiquidityOnDex += tokenAmountForInitialLiquidityOnDEX;
         tokenVestings[0].amount -= tokenAmountForInitialLiquidityOnDEX;
 
@@ -92,6 +91,7 @@ contract LiquidityVault is Vault {
         );
 
         DEXPairAddress = _pancakeFactory.getPair(soulsTokenAddress, BUSDTokenAddress);
+        amountUsedForLiquidityOnDEX += tokenAmountForInitialLiquidityOnDEX;
     }
 
     function getDEXPairAddress() public view returns (address) {
@@ -132,6 +132,12 @@ contract LiquidityVault is Vault {
     //Managers Function
     function addLiquidityOnDex(uint256 _tokenAmountToAdd) external onlyManager {
         require(_tokenAmountToAdd > 0, "Zero amount");
+        uint256 _availableAmount = totalDEXShare - amountUsedForLiquidityOnDEX;
+		console.log("available amount: %s", _availableAmount);
+        if (block.timestamp > marketMakerShareWithdrawDeadline) {
+            _availableAmount += (marketMakerShare - marketMakerShareWithdrawnAmount);
+        }
+        require(_availableAmount >= _tokenAmountToAdd, "Amount exeeds DEX Liquidity share");
         require(IERC20(soulsTokenAddress).balanceOf(address(this)) >= _tokenAmountToAdd, "Not enough SOULS token");
 
         string memory _title = "Add Liquidity On DEX";
