@@ -122,7 +122,9 @@ contract Proxy is Ownable {
         managers.approveTopic(_title, _valueInBytes);
         if (managers.isApproved(_title, _valueInBytes)) {
             playToEarnVaultAddress = _playToEarnVaultAddress;
-            _initPlayToEarnVault(_gameStartTime);
+            uint256 daysSinceGameStartTime = (block.timestamp - _gameStartTime) / 1 days;
+            require(60 - daysSinceGameStartTime >= 0, "Game start day can be maximum 60 days before");
+            _initPlayToEarnVault(60 - daysSinceGameStartTime);
             managers.deleteTopic(_title);
         }
     }
@@ -225,11 +227,11 @@ contract Proxy is Ownable {
         managers.addAddressToTrustedSources(_vaultAddress, _vaultName);
     }
 
-    function _initPlayToEarnVault(uint256 _gameStartTime) internal {
+    function _initPlayToEarnVault(uint256 _daysToUnlockStart) internal {
         IVault _playToEarnVault = IVault(playToEarnVaultAddress);
         soulsToken.approve(playToEarnVaultAddress, playToEarnShare);
-        uint256 daysSinceGameStartTime = (block.timestamp - _gameStartTime) / 1 days;
-        _playToEarnVault.lockTokens(playToEarnShare, 0, 60 - daysSinceGameStartTime, 84, 30);
+
+        _playToEarnVault.lockTokens(playToEarnShare, 0, 60 - _daysToUnlockStart, 84, 30);
         managers.addAddressToTrustedSources(playToEarnVaultAddress, "PlayToEarn Vault");
     }
 
@@ -254,8 +256,9 @@ contract Proxy is Ownable {
         }
     }
 
-    function withdrawOthers(address _tokenAddress, address _to) external onlyManager {
+    function withdrawTokens(address _tokenAddress, address _to) external onlyManager {
         require(_tokenAddress != address(soulsToken), "Not allowed to withdraw SOULS");
+        require(_tokenAddress != dexPairAddress, "Use withdrawLPTokens function to withdraw LP tokens");
         require(_to != address(0), "Zero address");
         uint256 _tokenBalance = IERC20(_tokenAddress).balanceOf(address(this));
         require(_tokenBalance > 0, "Token balance is zero");

@@ -51,11 +51,10 @@ const gotoTime = async (time: number) => {
 const _dexFactoryAddress = "0xB7926C0430Afb07AA7DEfDE6DA862aE0Bde767bc";
 const _dexRouterAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
 let _BUSDTokenAddress = ""
-const _GameLaunchTime = new Date("2022-12-12").getTime() / 1000 //TODO: SET CORRECT VAULE FOR GAME LAUNCH TIME
 
 
 
-describe('Souls Token Contract', () => {
+describe('Souls Token Contract and Bot Protection', () => {
 	let busdToken: BUSDToken
 	let owner: SignerWithAddress;
 	let manager1: SignerWithAddress;
@@ -76,14 +75,11 @@ describe('Souls Token Contract', () => {
 
 	beforeEach(async () => {
 		[owner, manager1, manager2, manager3, manager4, manager5, ...addrs] = await ethers.getSigners();
-
-
-
 	});
 
 
 	describe('\n\n#########################################\n deploy contracts \n#########################################', () => {
-		it("Deploys All Contracts", async () => {
+		it("Creates DEX liquidity on launch", async () => {
 			busdToken = await deployContract(owner, BUSDTokenArtifact) as BUSDToken
 			_BUSDTokenAddress = busdToken.address
 
@@ -93,7 +89,7 @@ describe('Souls Token Contract', () => {
 			soulsToken = new ethers.Contract(await proxy.soulsToken(), SoulsArtifact.abi) as SoulsToken
 			managers = new ethers.Contract(await proxy.managers(), ManagersArtifact.abi) as Managers
 
-			console.log("Deploy Vault Contracts")
+			console.log("Deploy Liquidity Vault Contract to create DEX liquidity")
 
 			liquidityVault = (await deployContract(owner, LiquidityVaultArtifact, ["Liquidity Vault", proxy.address, soulsToken.address, managers.address, _dexFactoryAddress, _dexRouterAddress, _BUSDTokenAddress])) as LiquidityVault;
 
@@ -198,8 +194,13 @@ describe('Souls Token Contract', () => {
 				owner.address,
 				(await (await ethers.provider.getBlock("latest")).timestamp) + 10000
 			)
-			const newSoulsBalance = await soulsToken.connect(owner).balanceOf(owner.address)
+			let newSoulsBalance = await soulsToken.connect(owner).balanceOf(owner.address)
+			console.log("SOULS balance before transfer: ", ethers.utils.formatEther(newSoulsBalance))
+
+			await soulsToken.connect(owner).transfer(addrs[0].address, ethers.utils.parseEther("5000"))
+			newSoulsBalance = await soulsToken.connect(owner).balanceOf(owner.address)
 			console.log("SOULS balance before trade: ", ethers.utils.formatEther(newSoulsBalance))
+
 			let walletCanSellAfter = await soulsToken.connect(owner).walletCanSellAfter(owner.address)
 			expect(walletCanSellAfter).to.be.equal(0)
 			console.log("Bot protection is still passive for wallet")

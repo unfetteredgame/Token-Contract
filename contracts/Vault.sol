@@ -76,21 +76,19 @@ contract Vault {
         IERC20 _soulsToken = IERC20(soulsTokenAddress);
         _soulsToken.transferFrom(msg.sender, address(this), _totalAmount);
 
-		uint256 _amountUsed= 0;
+        uint256 _amountUsed = 0;
 
         if (_initialRelease > 0) {
-            tokenVestings.push(
-                LockedToken({amount: _initialRelease, unlockTime: block.timestamp, released: false})
-            );
-			_amountUsed += _initialRelease;
+            tokenVestings.push(LockedToken({amount: _initialRelease, unlockTime: block.timestamp, released: false}));
+            _amountUsed += _initialRelease;
         }
         uint256 lockDuration = _lockDurationInDays * 1 days;
         uint256 releaseFrequency = _releaseFrequencyInDays * 1 days;
         for (uint256 i = 0; i < _countOfVestings; i++) {
-			uint256 _amount = (_totalAmount - _initialRelease) / _countOfVestings;
-			if (i == _countOfVestings - 1){
-				_amount = _totalAmount - _amountUsed;  //use remaining dusts from division
-			}
+            uint256 _amount = (_totalAmount - _initialRelease) / _countOfVestings;
+            if (i == _countOfVestings - 1) {
+                _amount = _totalAmount - _amountUsed; //use remaining dusts from division
+            }
             tokenVestings.push(
                 LockedToken({
                     amount: _amount,
@@ -98,31 +96,46 @@ contract Vault {
                     released: false
                 })
             );
-			_amountUsed += _amount;
-
+            _amountUsed += _amount;
         }
     }
 
     //Managers function
     function withdrawTokens(address[] calldata _receivers, uint256[] calldata _amounts) external virtual onlyManager {
         require(_receivers.length == _amounts.length, "Receivers and Amounts must be in same size");
-        _withdrawTokens(_receivers, _amounts);
+        uint256 _totalAmount;
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            _totalAmount += _amounts[i];
+        }
+        _withdrawTokens(_receivers, _amounts, _totalAmount);
     }
 
-    function _withdrawTokens(address[] calldata _receivers, uint256[] calldata _amounts) internal {
+    function _withdrawTokens(
+        address[] calldata _receivers,
+        uint256[] calldata _amounts,
+        uint256 _totalAmount
+    ) internal {
+        if (_totalAmount > releasedAmount - totalWithdrawnAmount) {
+            require(currentVestingIndex < tokenVestings.length, "Not enough released tokens and no more vesting");
+            require(block.timestamp >= tokenVestings[currentVestingIndex].unlockTime, "Wait for vesting release date");
+            require(
+                tokenVestings[currentVestingIndex].amount + releasedAmount - totalWithdrawnAmount >= _totalAmount,
+                "Not enough amount in released balance"
+            );
+        }
+
         string memory _title = "Withdraw Tokens With From Vault";
+
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_receivers, _amounts));
         managers.approveTopic(_title, _valueInBytes);
 
         if (managers.isApproved(_title, _valueInBytes)) {
             IERC20 _soulsToken = IERC20(soulsTokenAddress);
-            uint256 _totalAmount;
             bool _hasTransferError;
             for (uint256 r = 0; r < _receivers.length; r++) {
                 address _receiver = _receivers[r];
                 uint256 _amount = _amounts[r];
                 require(_amount > 0, "Zero token amount in data");
-                _totalAmount += _amount;
 
                 //Ignore ERC20 transfer errors wity try/catch to revert with custom error
                 try _soulsToken.transfer(_receiver, _amount) returns (bool) {} catch {
@@ -132,14 +145,6 @@ contract Vault {
             if (_totalAmount > releasedAmount - totalWithdrawnAmount) {
                 //Needs to release new vesting
                 uint256 _vestingIndex = currentVestingIndex;
-
-
-                require(_vestingIndex < tokenVestings.length, "Not enough released tokens and no more vesting");
-                require(block.timestamp >= tokenVestings[_vestingIndex].unlockTime, "Wait for vesting release date");
-                require(
-                    tokenVestings[_vestingIndex].amount + releasedAmount - totalWithdrawnAmount >= _totalAmount,
-                    "Not enough amount in released balance"
-                );
                 currentVestingIndex++;
 
                 tokenVestings[_vestingIndex].released = true;

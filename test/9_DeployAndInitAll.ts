@@ -51,7 +51,7 @@ const gotoTime = async (time: number) => {
 const _dexFactoryAddress = "0xB7926C0430Afb07AA7DEfDE6DA862aE0Bde767bc";
 const _dexRouterAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
 let _BUSDTokenAddress = ""
-let _GameLaunchTime = new Date("2023-12-12").getTime() / 1000 //TODO: SET CORRECT VAULE FOR GAME LAUNCH TIME
+let _GameLaunchTime =Math.floor(new Date().getTime() / 1000) - 10 // new Date("2023-12-12").getTime() / 1000 //TODO: SET CORRECT VAULE FOR GAME LAUNCH TIME
 const stakingAPYFor1Month = 5
 const stakingAPYFor3Month = 10
 const stakingAPYFor6Month = 15

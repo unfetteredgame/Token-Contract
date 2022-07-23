@@ -60,8 +60,12 @@ contract LiquidityVault is Vault {
 
     function withdrawRemainingTokens(address[] calldata _receivers, uint256[] calldata _amounts) external {
         require(block.timestamp > remainingTokensUnlockTime, "Remaining tokens are still locked");
+        uint256 _totalAmount;
         require(_receivers.length == _amounts.length, "Receivers and Amounts must be in same size");
-        _withdrawTokens(_receivers, _amounts);
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            _totalAmount += _amounts[i];
+        }
+        _withdrawTokens(_receivers, _amounts, _totalAmount);
     }
 
     function _createLiquidityOnDex(
@@ -130,10 +134,10 @@ contract LiquidityVault is Vault {
     }
 
     //Managers Function
-    function addLiquidityOnDex(uint256 _tokenAmountToAdd) external onlyManager {
+    function addLiquidityOnDEX(uint256 _tokenAmountToAdd) external onlyManager {
         require(_tokenAmountToAdd > 0, "Zero amount");
         uint256 _availableAmount = totalDEXShare - amountUsedForLiquidityOnDEX;
-		console.log("available amount: %s", _availableAmount);
+        console.log("available amount: %s", _availableAmount);
         if (block.timestamp > marketMakerShareWithdrawDeadline) {
             _availableAmount += (marketMakerShare - marketMakerShareWithdrawnAmount);
         }
@@ -175,6 +179,8 @@ contract LiquidityVault is Vault {
     //Managers Function
     function withdrawMarketMakerShare(address _receiver, uint256 _amount) external onlyManager {
         require(block.timestamp < marketMakerShareWithdrawDeadline, "Late request");
+        require(marketMakerShareWithdrawnAmount + _amount <= marketMakerShare, "Amount exeeds the limits");
+
         string memory _title = "Withdraw Market Maker Share";
         bytes32 _valueInBytes = keccak256(abi.encodePacked(_receiver, _amount));
         managers.approveTopic(_title, _valueInBytes);
@@ -182,7 +188,6 @@ contract LiquidityVault is Vault {
 
         if (managers.isApproved(_title, _valueInBytes)) {
             marketMakerShareWithdrawnAmount += _amount;
-            require(marketMakerShareWithdrawnAmount <= marketMakerShare, "Amount exeeds the limits");
             IERC20 soulsToken = IERC20(soulsTokenAddress);
             soulsToken.transfer(_receiver, _amount);
             managers.deleteTopic(_title);

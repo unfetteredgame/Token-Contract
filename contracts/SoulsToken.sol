@@ -16,8 +16,6 @@ contract SoulsToken is ERC20Burnable, Ownable {
     IManagers managers;
     BotProtectionParams public botProtectionParams;
 
-    mapping(address => uint256) public walletCanSellAfter;
-
     uint256 public maxSupply = 3000000000 ether;
     uint256 public tradingStartTimeOnDEX;
     uint256 public botProtectionDuration = 0 seconds; //Will be set in enableTrading function
@@ -26,6 +24,9 @@ contract SoulsToken is ERC20Burnable, Ownable {
     address public proxyAddress;
 
     bool public tradingEnabled = true;
+
+    mapping(address => uint256) public walletCanSellAfter;
+    mapping(address => uint256) private boughtAmountDuringBotProtection;
 
     modifier onlyManager() {
         require(managers.isManager(msg.sender), "Not authorized");
@@ -96,7 +97,6 @@ contract SoulsToken is ERC20Burnable, Ownable {
         address to,
         uint256 amount
     ) internal view override {
-        // if ((from != address(0) && to != address(0)) && (from == dexPairAddress || to == dexPairAddress)) {
         if (((dexPairAddress != address(0) && (from == dexPairAddress)) || to == dexPairAddress)) {
             //Trade transaction
             require(tradingEnabled == true, "Trading is disabled");
@@ -105,9 +105,14 @@ contract SoulsToken is ERC20Burnable, Ownable {
                 //While bot protection is active
                 if (to == dexPairAddress) {
                     //Selling Souls
+                    console.log("trying to sell 1");
                     require(block.timestamp > walletCanSellAfter[from], "Bot protection time lock");
+                    console.log("trying to sell 2");
                     if (walletCanSellAfter[from] > 0) {
+                        console.log("trying to sell 3");
+
                         require(amount <= botProtectionParams.maxSellAmount, "Bot protection amount lock");
+                        console.log("trying to sell 4");
                     }
                 }
             }
@@ -117,19 +122,31 @@ contract SoulsToken is ERC20Burnable, Ownable {
     function _afterTokenTransfer(
         address from,
         address to,
-        uint256
+        uint256 amount
     ) internal override {
         // if (from != address(0) && (from == dexPairAddress || to == dexPairAddress)) {
         if (dexPairAddress != address(0) && block.timestamp < tradingStartTimeOnDEX + botProtectionDuration) {
             if (from == dexPairAddress) {
                 //Buying Souls
-                if (balanceOf(to) > botProtectionParams.activateIfBalanceExeeds) {
+                if (
+                    block.timestamp > tradingStartTimeOnDEX &&
+                    block.timestamp < tradingStartTimeOnDEX + botProtectionDuration
+                ) {
+                    boughtAmountDuringBotProtection[to] += amount;
+                }
+                if (boughtAmountDuringBotProtection[to] > botProtectionParams.activateIfBalanceExeeds) {
                     //Start following account
                     walletCanSellAfter[to] = block.timestamp + botProtectionParams.durationBetweenSells;
                 }
             }
             if (to == dexPairAddress) {
                 //Selling Souls
+                if (
+                    block.timestamp > tradingStartTimeOnDEX &&
+                    block.timestamp < tradingStartTimeOnDEX + botProtectionDuration
+                ) {
+                    boughtAmountDuringBotProtection[from] -= amount;
+                }
                 if (walletCanSellAfter[from] > 0) {
                     //Account is followed by bot protection
                     walletCanSellAfter[from] = block.timestamp + botProtectionParams.durationBetweenSells;
